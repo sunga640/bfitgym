@@ -1,0 +1,2 @@
+<x-page-placeholder title="{{ __('POS / Sales Report') }}" icon="shopping-bag" description="{{ __('Analyze sales performance and trends.') }}" />
+

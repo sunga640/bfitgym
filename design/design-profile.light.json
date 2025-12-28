@@ -1,0 +1,122 @@
+{
+    "name": "Fitness Dashboard Light",
+    "description": "A modern, clean fitness dashboard with a light glassmorphism aesthetic. Features soft rounded cards with subtle shadows, warm orange accents, and a calming neutral palette designed for health and wellness tracking.",
+    "colors": {
+      "background": "#f5f3ef",
+      "surface": "#ffffff",
+      "surface-elevated": "#ffffff",
+      "primary": "#f97316",
+      "primary-soft": "rgba(249, 115, 22, 0.12)",
+      "accent": "#22c55e",
+      "border-subtle": "rgba(0, 0, 0, 0.06)",
+      "border-strong": "rgba(0, 0, 0, 0.12)",
+      "text-main": "#1a1a1a",
+      "text-muted": "#6b7280",
+      "text-soft": "#9ca3af",
+      "danger": "#ef4444",
+      "warning": "#f59e0b",
+      "success": "#22c55e"
+    },
+    "typography": {
+      "font-family": "Inter, SF Pro Display, -apple-system, sans-serif",
+      "font-weight": {
+        "regular": 400,
+        "medium": 500,
+        "semibold": 600,
+        "bold": 700
+      },
+      "scale": {
+        "xs": "0.75rem",
+        "sm": "0.875rem",
+        "base": "1rem",
+        "lg": "1.125rem",
+        "xl": "1.25rem",
+        "2xl": "1.5rem",
+        "3xl": "1.875rem"
+      },
+      "line-height": {
+        "tight": 1.2,
+        "default": 1.5,
+        "relaxed": 1.6
+      }
+    },
+    "spacing": {
+      "xs": "0.25rem",
+      "sm": "0.5rem",
+      "md": "0.75rem",
+      "lg": "1rem",
+      "xl": "1.5rem",
+      "2xl": "2rem"
+    },
+    "radius": {
+      "sm": "0.5rem",
+      "md": "0.75rem",
+      "lg": "1rem",
+      "xl": "1.5rem",
+      "full": "9999px"
+    },
+    "shadows": {
+      "card": "0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04)",
+      "button": "0 2px 8px rgba(249, 115, 22, 0.25)"
+    },
+    "components": {
+      "card": {
+        "padding": "1.25rem",
+        "radius": "xl",
+        "background": "surface",
+        "border": "1px solid border-subtle",
+        "gap": "0.75rem"
+      },
+      "button-primary": {
+        "font-weight": 600,
+        "padding-y": "0.625rem",
+        "padding-x": "1.25rem",
+        "radius": "lg",
+        "background": "primary",
+        "color": "#ffffff",
+        "hover-background": "#ea580c",
+        "shadow": "button"
+      },
+      "input": {
+        "background": "surface",
+        "border": "1px solid border-subtle",
+        "radius": "lg",
+        "padding-y": "0.75rem",
+        "padding-x": "1rem"
+      },
+      "chip": {
+        "background": "primary-soft",
+        "color": "primary",
+        "radius": "md",
+        "padding-y": "0.25rem",
+        "padding-x": "0.625rem"
+      },
+      "navbar": {
+        "height": "4rem",
+        "background": "surface",
+        "border-bottom": null,
+        "padding-x": "1.5rem",
+        "padding-y": "0.75rem"
+      },
+      "sidebar": {
+        "width": "5rem",
+        "background": "rgba(255, 255, 255, 0.7)",
+        "border-right": null,
+        "padding": "1rem",
+        "item-height": "3rem"
+      }
+    },
+    "layout": {
+      "page": {
+        "max-width": "1440px",
+        "margin-x": "auto",
+        "padding-x": "2rem",
+        "padding-y": "1.5rem",
+        "gap": "1.5rem"
+      },
+      "grid": {
+        "columns-desktop": 12,
+        "gap": "1.25rem"
+      }
+    }
+  }
