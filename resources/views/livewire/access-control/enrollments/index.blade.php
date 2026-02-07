@@ -297,13 +297,51 @@
             </div>
 
             <div class="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/50">
-                <h4 class="mb-2 font-medium text-zinc-900 dark:text-white">{{ __('Next Steps') }}</h4>
-                <ol class="list-inside list-decimal space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    <li>{{ __('Copy the enrollment code above') }}</li>
-                    <li>{{ __('On the branch PC, run: php application agent:install') }}</li>
-                    <li>{{ __('Paste the code when prompted') }}</li>
-                    <li>{{ __('Start the agent: php application agent:run') }}</li>
+                <h4 class="mb-3 font-medium text-zinc-900 dark:text-white">{{ __('Setup Instructions') }}</h4>
+                
+                {{-- Cloud URL --}}
+                <div class="mb-4">
+                    <label class="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Cloud URL (needed during setup)') }}</label>
+                    <div class="flex items-center gap-2">
+                        <code class="flex-1 rounded border border-zinc-300 bg-white px-2 py-1 font-mono text-xs text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{{ config('app.url') }}</code>
+                        <button
+                            type="button"
+                            class="rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
+                            x-data="{}"
+                            x-on:click="navigator.clipboard.writeText('{{ config('app.url') }}')"
+                            title="{{ __('Copy URL') }}"
+                        >
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <h5 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ __('On the Branch Computer:') }}</h5>
+                <ol class="list-inside list-decimal space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <li>
+                        {{ __('Ensure PHP is installed') }}
+                        <span class="text-xs text-zinc-500">({{ __('download from windows.php.net') }})</span>
+                    </li>
+                    <li>
+                        {{ __('Open the local-agent folder') }}
+                    </li>
+                    <li>
+                        {{ __('Double-click') }} <code class="rounded bg-zinc-200 px-1 py-0.5 text-xs dark:bg-zinc-700">install-agent.bat</code>
+                    </li>
+                    <li>
+                        {{ __('Enter the Cloud URL and paste the enrollment code when prompted') }}
+                    </li>
+                    <li>
+                        {{ __('Enter the device IP address, username, and password') }}
+                    </li>
+                    <li>
+                        {{ __('Double-click') }} <code class="rounded bg-zinc-200 px-1 py-0.5 text-xs dark:bg-zinc-700">start-agent.bat</code> {{ __('to start') }}
+                    </li>
                 </ol>
+
+                <div class="mt-3 rounded border border-blue-200 bg-blue-50 p-2 text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                    <strong>{{ __('Tip:') }}</strong> {{ __('For automatic startup, run install-service.bat as Administrator.') }}
+                </div>
             </div>
 
             <div class="flex justify-end">
