@@ -7,6 +7,7 @@ use App\Models\AccessControlDevice;
 use App\Models\Branch;
 use App\Services\AccessControl\AgentEnrollmentService;
 use App\Services\BranchContext;
+use App\Support\Integrations\IntegrationPermission;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -18,6 +19,11 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use WithPagination;
+
+    public string $integration_type = AccessControlDevice::INTEGRATION_HIKVISION;
+    public string $provider_filter = AccessControlDevice::PROVIDER_HIKVISION_AGENT;
+    public string $integration_label = 'HIKVision';
+    public string $route_base = 'hikvision';
 
     // Search/Filter
     public string $search = '';
@@ -57,6 +63,10 @@ class Index extends Component
 
     public function openGenerateModal(): void
     {
+        if (!IntegrationPermission::canManage(auth()->user(), $this->integration_type)) {
+            abort(403);
+        }
+
         $this->authorize('create', AccessControlAgentEnrollment::class);
 
         $this->reset(['enrollment_label', 'selected_device_ids', 'generated_code', 'generated_agent_uuid', 'code_copied']);
@@ -72,6 +82,10 @@ class Index extends Component
 
     public function generateEnrollment(): void
     {
+        if (!IntegrationPermission::canManage(auth()->user(), $this->integration_type)) {
+            abort(403);
+        }
+
         $this->authorize('create', AccessControlAgentEnrollment::class);
 
         $this->validate([
@@ -97,7 +111,9 @@ class Index extends Component
                 actor: auth()->user(),
                 device_ids: $this->selected_device_ids,
                 label: $this->enrollment_label ?: null,
-                expires_in_minutes: $this->expires_in_minutes
+                expires_in_minutes: $this->expires_in_minutes,
+                integration_type: $this->integration_type,
+                provider: $this->provider_filter,
             );
 
             // Store the plaintext code for view-once display
@@ -134,7 +150,7 @@ class Index extends Component
 
     public function confirmRevoke(int $enrollment_id): void
     {
-        $enrollment = AccessControlAgentEnrollment::findOrFail($enrollment_id);
+        $enrollment = $this->scopedEnrollment($enrollment_id);
         $this->authorize('update', $enrollment);
 
         if ($enrollment->status === AccessControlAgentEnrollment::STATUS_USED) {
@@ -158,7 +174,7 @@ class Index extends Component
             return;
         }
 
-        $enrollment = AccessControlAgentEnrollment::findOrFail($this->revoke_enrollment_id);
+        $enrollment = $this->scopedEnrollment($this->revoke_enrollment_id);
         $this->authorize('update', $enrollment);
 
         $service = app(AgentEnrollmentService::class);
@@ -179,12 +195,18 @@ class Index extends Component
 
     public function render(): View
     {
+        if (!IntegrationPermission::canView(auth()->user(), $this->integration_type)) {
+            abort(403);
+        }
+
         $this->authorize('viewAny', AccessControlAgentEnrollment::class);
 
         $branch_id = app(BranchContext::class)->getCurrentBranchId();
 
         // Get enrollments
         $enrollments = AccessControlAgentEnrollment::query()
+            ->forIntegration($this->integration_type)
+            ->forProvider($this->provider_filter)
             ->with(['createdBy', 'agent', 'usedByAgent', 'devices'])
             ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
             ->when($this->search, fn($q) => $q->where(function ($q) {
@@ -203,6 +225,8 @@ class Index extends Component
         // Available devices for selection
         $available_devices = AccessControlDevice::query()
             ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
+            ->forIntegration($this->integration_type)
+            ->when($this->provider_filter, fn($q) => $q->forProvider($this->provider_filter))
             ->where('status', AccessControlDevice::STATUS_ACTIVE)
             ->orderBy('name')
             ->get();
@@ -210,6 +234,16 @@ class Index extends Component
         return view('livewire.access-control.enrollments.index', [
             'enrollments' => $enrollments,
             'available_devices' => $available_devices,
+            'integration_label' => $this->integration_label,
+            'route_base' => $this->route_base,
         ]);
+    }
+
+    protected function scopedEnrollment(int $enrollment_id): AccessControlAgentEnrollment
+    {
+        return AccessControlAgentEnrollment::query()
+            ->forIntegration($this->integration_type)
+            ->forProvider($this->provider_filter)
+            ->findOrFail($enrollment_id);
     }
 }

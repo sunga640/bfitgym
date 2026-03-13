@@ -1,13 +1,13 @@
 <div class="flex h-full w-full flex-1 flex-col gap-6 p-6">
     {{-- Header --}}
     <div class="flex items-center gap-4">
-        <flux:button href="{{ route('access-control.devices.index') }}" wire:navigate variant="ghost" icon="arrow-left" size="sm" />
+        <flux:button href="{{ route($route_prefix . '.index') }}" wire:navigate variant="ghost" icon="arrow-left" size="sm" />
         <div>
             <flux:heading size="xl">
-                {{ $is_editing ? __('Edit Device') : __('Add Access Control Device') }}
+                {{ $is_editing ? __('Edit :integration Device', ['integration' => $integration_label]) : __('Add :integration Device', ['integration' => $integration_label]) }}
             </flux:heading>
             <flux:subheading>
-                {{ $is_editing ? __('Update device configuration and connection settings.') : __('Configure a new Hikvision access control device.') }}
+                {{ $is_editing ? __('Update device configuration and connection settings.') : __('Configure a new :integration access control device.', ['integration' => $integration_label]) }}
             </flux:subheading>
         </div>
     </div>
@@ -115,6 +115,18 @@
                     </flux:select>
                     <flux:error name="status" />
                 </flux:field>
+
+                @if($show_provider_selector)
+                    <flux:field class="sm:col-span-2">
+                        <flux:label>{{ __('Provider') }} *</flux:label>
+                        <flux:select wire:model.live="provider" required>
+                            @foreach($provider_options as $provider_key => $provider_label)
+                                <option value="{{ $provider_key }}">{{ $provider_label }}</option>
+                            @endforeach
+                        </flux:select>
+                        <flux:error name="provider" />
+                    </flux:field>
+                @endif
             </div>
         </div>
 
@@ -122,17 +134,22 @@
         <div class="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-800">
             <div class="mb-6">
                 <h3 class="text-lg font-medium text-zinc-900 dark:text-white">{{ __('Connection Settings') }}</h3>
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Network and authentication configuration. These settings are stored securely and used by the local agent.') }}</p>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                    @if($requires_credentials)
+                        {{ __('Network and authentication configuration used by the local agent/device connector.') }}
+                    @else
+                        {{ __('Optional device connection details. Platform mode can run without direct device credentials.') }}
+                    @endif
+                </p>
             </div>
 
             <div class="grid gap-6 sm:grid-cols-2">
                 <flux:field>
-                    <flux:label>{{ __('IP Address') }} *</flux:label>
+                    <flux:label>{{ __('IP Address') }} {{ $requires_credentials ? '*' : '' }}</flux:label>
                     <flux:input
                         wire:model="ip_address"
                         type="text"
                         placeholder="{{ __('e.g., 192.168.1.100') }}"
-                        required
                     />
                     <flux:error name="ip_address" />
                 </flux:field>
@@ -152,23 +169,22 @@
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>{{ __('Username') }} *</flux:label>
+                    <flux:label>{{ __('Username') }} {{ $requires_credentials ? '*' : '' }}</flux:label>
                     <flux:input
                         wire:model="username"
                         type="text"
                         placeholder="admin"
-                        required
                     />
                     <flux:error name="username" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>{{ __('Password') }} {{ $is_editing ? '' : '*' }}</flux:label>
+                    <flux:label>{{ __('Password') }} {{ (!$is_editing && $requires_credentials) ? '*' : '' }}</flux:label>
                     <flux:input
                         wire:model="password"
                         type="password"
                         placeholder="{{ $is_editing ? __('Leave blank to keep current') : __('Device password') }}"
-                        :required="!$is_editing"
+                        :required="$requires_credentials && !$is_editing"
                     />
                     <flux:error name="password" />
                     @if($is_editing)
@@ -252,7 +268,7 @@
 
         {{-- Actions --}}
         <div class="flex items-center justify-end gap-3">
-            <flux:button href="{{ route('access-control.devices.index') }}" wire:navigate variant="ghost">
+            <flux:button href="{{ route($route_prefix . '.index') }}" wire:navigate variant="ghost">
                 {{ __('Cancel') }}
             </flux:button>
             <flux:button type="submit" wire:loading.attr="disabled">

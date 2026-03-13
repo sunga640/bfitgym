@@ -1,11 +1,11 @@
 <div class="flex h-full w-full flex-1 flex-col gap-6 p-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl">{{ __('Access Control Agents') }}</flux:heading>
-            <flux:subheading>{{ __('Local agents (branch PCs) that execute LAN device commands.') }}</flux:subheading>
+            <flux:heading size="xl">{{ __(':integration Agents', ['integration' => $integration_label]) }}</flux:heading>
+            <flux:subheading>{{ __('Local agents (branch PCs) that execute commands for :integration devices.', ['integration' => $integration_label]) }}</flux:subheading>
         </div>
         <div class="flex items-center gap-2">
-            <flux:button href="{{ route('access-control.enrollments.index') }}" wire:navigate icon="key">
+            <flux:button href="{{ route($route_base . '.enrollments.index') }}" wire:navigate icon="key">
                 {{ __('Enrollment Codes') }}
             </flux:button>
         </div>
@@ -41,7 +41,7 @@
                         <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
                             <td class="px-4 py-3">
                                 <div>
-                                    <a href="{{ route('access-control.agents.show', $agent) }}" wire:navigate class="font-medium text-zinc-900 hover:underline dark:text-white">
+                                    <a href="{{ route($route_base . '.agents.show', $agent) }}" wire:navigate class="font-medium text-zinc-900 hover:underline dark:text-white">
                                         {{ $agent->name }}
                                     </a>
                                     <p class="text-xs text-zinc-500 dark:text-zinc-400">
@@ -95,7 +95,7 @@
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-1">
                                     <flux:button
-                                        href="{{ route('access-control.agents.show', $agent) }}"
+                                        href="{{ route($route_base . '.agents.show', $agent) }}"
                                         wire:navigate
                                         variant="ghost"
                                         size="sm"
@@ -124,7 +124,7 @@
                                         <p class="font-medium text-zinc-900 dark:text-white">{{ __('No agents yet') }}</p>
                                         <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Generate an enrollment code and register the local agent.') }}</p>
                                     </div>
-                                    <flux:button href="{{ route('access-control.enrollments.index') }}" wire:navigate icon="key" size="sm">
+                                    <flux:button href="{{ route($route_base . '.enrollments.index') }}" wire:navigate icon="key" size="sm">
                                         {{ __('Generate Enrollment Code') }}
                                     </flux:button>
                                 </div>

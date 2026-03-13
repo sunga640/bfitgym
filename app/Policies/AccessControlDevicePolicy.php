@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\AccessControlDevice;
 use App\Models\User;
 use App\Services\BranchContext;
+use App\Support\Integrations\IntegrationPermission;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class AccessControlDevicePolicy
@@ -16,7 +17,8 @@ class AccessControlDevicePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyPermission(['view access devices', 'manage access devices']);
+        return IntegrationPermission::canView($user, AccessControlDevice::INTEGRATION_HIKVISION)
+            || IntegrationPermission::canView($user, AccessControlDevice::INTEGRATION_ZKTECO);
     }
 
     /**
@@ -24,7 +26,7 @@ class AccessControlDevicePolicy
      */
     public function view(User $user, AccessControlDevice $device): bool
     {
-        if (!$user->hasAnyPermission(['view access devices', 'manage access devices'])) {
+        if (!IntegrationPermission::canView($user, $device->integration_type)) {
             return false;
         }
 
@@ -36,7 +38,8 @@ class AccessControlDevicePolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('manage access devices');
+        return IntegrationPermission::canManage($user, AccessControlDevice::INTEGRATION_HIKVISION)
+            || IntegrationPermission::canManage($user, AccessControlDevice::INTEGRATION_ZKTECO);
     }
 
     /**
@@ -44,7 +47,7 @@ class AccessControlDevicePolicy
      */
     public function update(User $user, AccessControlDevice $device): bool
     {
-        if (!$user->hasPermissionTo('manage access devices')) {
+        if (!IntegrationPermission::canManage($user, $device->integration_type)) {
             return false;
         }
 
@@ -56,7 +59,7 @@ class AccessControlDevicePolicy
      */
     public function delete(User $user, AccessControlDevice $device): bool
     {
-        if (!$user->hasPermissionTo('manage access devices')) {
+        if (!IntegrationPermission::canManage($user, $device->integration_type)) {
             return false;
         }
 
@@ -68,7 +71,7 @@ class AccessControlDevicePolicy
      */
     public function testConnection(User $user, AccessControlDevice $device): bool
     {
-        if (!$user->hasPermissionTo('manage access devices')) {
+        if (!IntegrationPermission::canManage($user, $device->integration_type)) {
             return false;
         }
 
@@ -80,7 +83,7 @@ class AccessControlDevicePolicy
      */
     public function sync(User $user, AccessControlDevice $device): bool
     {
-        if (!$user->hasPermissionTo('manage access devices')) {
+        if (!IntegrationPermission::canManage($user, $device->integration_type)) {
             return false;
         }
 
@@ -112,4 +115,3 @@ class AccessControlDevicePolicy
         return false;
     }
 }
-

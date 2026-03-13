@@ -22,6 +22,8 @@ class AccessControlDeviceCommand extends Model
     protected $fillable = [
         'id',
         'branch_id',
+        'integration_type',
+        'provider',
         'access_control_device_id',
         'claimed_by_agent_id',
         'subject_type',
@@ -49,6 +51,8 @@ class AccessControlDeviceCommand extends Model
             'processing_started_at' => 'datetime',
             'finished_at' => 'datetime',
             'superseded_at' => 'datetime',
+            'integration_type' => 'string',
+            'provider' => 'string',
         ];
     }
 
@@ -80,6 +84,16 @@ class AccessControlDeviceCommand extends Model
      *             Use TYPE_PERSON_UPSERT for user sync instead.
      */
     public const TYPE_ENROLL_FINGERPRINT = 'enroll_fingerprint';
+
+    public function scopeForIntegration($query, string $integration_type)
+    {
+        return $query->where('integration_type', $integration_type);
+    }
+
+    public function scopeForProvider($query, string $provider)
+    {
+        return $query->where('provider', $provider);
+    }
 
     public function device(): BelongsTo
     {

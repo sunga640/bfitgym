@@ -3,6 +3,7 @@
 namespace App\Services\AccessControl;
 
 use App\Models\AccessIdentity;
+use App\Models\AccessControlDevice;
 use App\Models\Member;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,7 @@ class AccessControlService
         $existing_identity = AccessIdentity::withTrashed()
             ->withoutBranchScope()
             ->where('branch_id', $branch_id)
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
             ->first();
@@ -102,6 +104,8 @@ class AccessControlService
             // Create AccessIdentity
             $identity = AccessIdentity::create([
                 'branch_id' => $branch_id,
+                'integration_type' => AccessControlDevice::INTEGRATION_HIKVISION,
+                'provider' => AccessControlDevice::PROVIDER_HIKVISION_AGENT,
                 'subject_type' => AccessIdentity::SUBJECT_MEMBER,
                 'subject_id' => $member->id,
                 'device_user_id' => $device_user_id,
@@ -177,6 +181,7 @@ class AccessControlService
     {
         $identity = AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
             ->first();
@@ -230,6 +235,7 @@ class AccessControlService
     {
         $identity = AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
             ->active()
@@ -279,6 +285,7 @@ class AccessControlService
     {
         $identity = AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
             ->first();
@@ -349,6 +356,7 @@ class AccessControlService
     {
         $identity = AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
             ->first();
@@ -415,6 +423,7 @@ class AccessControlService
         // Get all active access identities for members (don't use ->with('member') due to relationship issue)
         $active_identities = AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('is_active', true)
             ->get();
@@ -462,6 +471,7 @@ class AccessControlService
     {
         return AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
             ->active()
@@ -475,6 +485,7 @@ class AccessControlService
     {
         return AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
             ->first();
@@ -502,6 +513,7 @@ class AccessControlService
     {
         return AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_STAFF)
             ->where('subject_id', $user->id)
             ->first();
@@ -514,6 +526,7 @@ class AccessControlService
     {
         return AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_STAFF)
             ->where('subject_id', $user->id)
             ->active()
@@ -527,6 +540,7 @@ class AccessControlService
     {
         $identity = AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_STAFF)
             ->where('subject_id', $user->id)
             ->first();
@@ -580,6 +594,7 @@ class AccessControlService
     {
         $identity = AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_STAFF)
             ->where('subject_id', $user->id)
             ->first();
@@ -643,6 +658,7 @@ class AccessControlService
     {
         $identity = AccessIdentity::query()
             ->withoutBranchScope()
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_STAFF)
             ->where('subject_id', $user->id)
             ->first();

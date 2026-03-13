@@ -31,6 +31,8 @@ class AccessControlAgent extends Model
         'os',
         'app_version',
         'status',
+        'supported_providers',
+        'default_provider',
         'secret_hash',
         'last_seen_at',
         'last_ip',
@@ -41,6 +43,7 @@ class AccessControlAgent extends Model
     {
         return [
             'last_seen_at' => 'datetime',
+            'supported_providers' => 'array',
         ];
     }
 
@@ -193,5 +196,28 @@ class AccessControlAgent extends Model
             'last_ip' => $ip ?? $this->last_ip,
             'last_error' => $error,
         ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function providerList(): array
+    {
+        $providers = $this->supported_providers ?? [];
+
+        if (empty($providers) && $this->default_provider) {
+            $providers = [$this->default_provider];
+        }
+
+        if (empty($providers)) {
+            $providers = [AccessControlDevice::PROVIDER_HIKVISION_AGENT];
+        }
+
+        return array_values(array_unique(array_filter($providers)));
+    }
+
+    public function supportsProvider(string $provider): bool
+    {
+        return in_array($provider, $this->providerList(), true);
     }
 }

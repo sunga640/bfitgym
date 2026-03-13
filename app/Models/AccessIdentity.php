@@ -18,6 +18,8 @@ class AccessIdentity extends Model
 
     protected $fillable = [
         'branch_id',
+        'integration_type',
+        'provider',
         'subject_type',
         'subject_id',
         'device_user_id',
@@ -42,6 +44,8 @@ class AccessIdentity extends Model
             'valid_from' => 'date',
             'valid_until' => 'date',
             'disabled_at' => 'datetime',
+            'integration_type' => 'string',
+            'provider' => 'string',
         ];
     }
 
@@ -62,6 +66,16 @@ class AccessIdentity extends Model
     public function scopeForStaff($query)
     {
         return $query->where('subject_type', self::SUBJECT_STAFF);
+    }
+
+    public function scopeForIntegration($query, string $integration_type)
+    {
+        return $query->where('integration_type', $integration_type);
+    }
+
+    public function scopeForProvider($query, string $provider)
+    {
+        return $query->where('provider', $provider);
     }
 
     // -------------------------------------------------------------------------
@@ -99,4 +113,3 @@ class AccessIdentity extends Model
         return $this->hasMany(AccessLog::class);
     }
 }
-

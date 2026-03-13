@@ -14,12 +14,13 @@ class AccessControlDeviceSeeder extends Seeder
     {
         AccessControlDevice::create([
             'branch_id'         => 2,
+            'integration_type'  => AccessControlDevice::INTEGRATION_HIKVISION,
+            'provider'          => AccessControlDevice::PROVIDER_HIKVISION_AGENT,
             'name'              => 'DS-K1T808MFWX',
             'device_model'      => AccessControlDevice::MODEL_DS_K1T808MFWX,
             'device_type'       => AccessControlDevice::TYPE_ENTRY,
-
-            // 🔹 REQUIRED FIELD
-            'serial_number'     => 'DS-K1T808MFWX-001', // put the real serial if you have it
+            // Required field. Replace with the actual serial where applicable.
+            'serial_number'     => 'DS-K1T808MFWX-001',
 
             'ip_address'        => '192.168.1.111',
             'port'              => 80,
@@ -40,3 +41,4 @@ class AccessControlDeviceSeeder extends Seeder
         ]);
     }
 }
+

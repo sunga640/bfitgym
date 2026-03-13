@@ -2,14 +2,14 @@
     {{-- Header --}}
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-4">
-            <flux:button href="{{ route('access-control.devices.index') }}" wire:navigate variant="ghost" icon="arrow-left" size="sm" />
+            <flux:button href="{{ route($route_prefix . '.index') }}" wire:navigate variant="ghost" icon="arrow-left" size="sm" />
             <div>
                 <flux:heading size="xl">{{ $device->name }}</flux:heading>
-                <flux:subheading>{{ $device->serial_number }}</flux:subheading>
+                <flux:subheading>{{ $integration_label }} • {{ $device->serial_number }}</flux:subheading>
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <flux:button href="{{ route('access-control.devices.edit', $device) }}" wire:navigate icon="pencil" size="sm">
+            <flux:button href="{{ route($route_prefix . '.edit', $device) }}" wire:navigate icon="pencil" size="sm">
                 {{ __('Edit') }}
             </flux:button>
         </div>

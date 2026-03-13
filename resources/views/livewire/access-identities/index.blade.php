@@ -1,12 +1,14 @@
 <div class="flex h-full w-full flex-1 flex-col gap-6 p-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl">{{ __('Access Identities') }}</flux:heading>
+            <flux:heading size="xl">{{ __(':integration Identities', ['integration' => $integration_label]) }}</flux:heading>
             <flux:subheading>{{ __('Map members and staff to device user IDs / cards.') }}</flux:subheading>
         </div>
-        <flux:button href="{{ route('access-identities.create') }}" wire:navigate icon="plus">
-            {{ __('Add Identity') }}
-        </flux:button>
+        @if($can_manage)
+            <flux:button href="{{ route($route_prefix . '.create') }}" wire:navigate icon="plus">
+                {{ __('Add Identity') }}
+            </flux:button>
+        @endif
     </div>
 
     <div class="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800 sm:flex-row sm:items-center">
@@ -83,36 +85,47 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-center">
-                                <button
-                                    wire:click="toggleStatus({{ $identity->id }})"
-                                    class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium transition-colors
-                                        {{ $identity->is_active
-                                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                            : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-400' }}"
-                                >
-                                    <span class="h-1.5 w-1.5 rounded-full {{ $identity->is_active ? 'bg-emerald-500' : 'bg-zinc-400' }}"></span>
-                                    {{ $identity->is_active ? __('Active') : __('Inactive') }}
-                                </button>
+                                @if($can_manage)
+                                    <button
+                                        wire:click="toggleStatus({{ $identity->id }})"
+                                        class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium transition-colors
+                                            {{ $identity->is_active
+                                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-400' }}"
+                                    >
+                                        <span class="h-1.5 w-1.5 rounded-full {{ $identity->is_active ? 'bg-emerald-500' : 'bg-zinc-400' }}"></span>
+                                        {{ $identity->is_active ? __('Active') : __('Inactive') }}
+                                    </button>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
+                                        <span class="h-1.5 w-1.5 rounded-full {{ $identity->is_active ? 'bg-emerald-500' : 'bg-zinc-400' }}"></span>
+                                        {{ $identity->is_active ? __('Active') : __('Inactive') }}
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex items-center justify-end gap-1">
-                                    <flux:button
-                                        href="{{ route('access-identities.edit', $identity) }}"
-                                        wire:navigate
-                                        variant="ghost"
-                                        size="sm"
-                                        icon="pencil"
-                                        title="{{ __('Edit') }}"
-                                    />
-                                    <flux:button
-                                        wire:click="delete({{ $identity->id }})"
-                                        variant="ghost"
-                                        size="sm"
-                                        icon="trash"
-                                        class="text-red-600 hover:text-red-700 dark:text-red-400"
-                                        title="{{ __('Delete') }}"
-                                    />
-                                </div>
+                                @if($can_manage)
+                                    <div class="flex items-center justify-end gap-1">
+                                        <flux:button
+                                            href="{{ route($route_prefix . '.edit', $identity) }}"
+                                            wire:navigate
+                                            variant="ghost"
+                                            size="sm"
+                                            icon="pencil"
+                                            title="{{ __('Edit') }}"
+                                        />
+                                        <flux:button
+                                            wire:click="delete({{ $identity->id }})"
+                                            variant="ghost"
+                                            size="sm"
+                                            icon="trash"
+                                            class="text-red-600 hover:text-red-700 dark:text-red-400"
+                                            title="{{ __('Delete') }}"
+                                        />
+                                    </div>
+                                @else
+                                    <span class="text-zinc-400 dark:text-zinc-500">—</span>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -124,9 +137,11 @@
                                         <p class="font-medium text-zinc-900 dark:text-white">{{ __('No identities found') }}</p>
                                         <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Create an identity to allow device access.') }}</p>
                                     </div>
-                                    <flux:button href="{{ route('access-identities.create') }}" wire:navigate icon="plus" size="sm">
-                                        {{ __('Add Identity') }}
-                                    </flux:button>
+                                    @if($can_manage)
+                                        <flux:button href="{{ route($route_prefix . '.create') }}" wire:navigate icon="plus" size="sm">
+                                            {{ __('Add Identity') }}
+                                        </flux:button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -142,4 +157,3 @@
         @endif
     </div>
 </div>
-

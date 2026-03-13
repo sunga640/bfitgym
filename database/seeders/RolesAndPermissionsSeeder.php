@@ -84,13 +84,18 @@ class RolesAndPermissionsSeeder extends Seeder
             'delete events',
             'manage event registrations',
 
-            // Access control & Attendance
+            // Access control integrations
             'view attendance',
             'view access logs',
             'view access devices',
             'manage access devices',
             'manage access identities',
             'export attendance',
+            'view hikvision',
+            'manage hikvision',
+            'view zkteco',
+            'manage zkteco',
+            'manage zkteco settings',
 
             // Insurance
             'view insurers',
@@ -245,6 +250,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage access devices',
             'manage access identities',
             'export attendance',
+            'view hikvision',
+            'manage hikvision',
+            'view zkteco',
+            'manage zkteco',
+            'manage zkteco settings',
 
             // Insurance
             'view insurers',
@@ -346,6 +356,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'view attendance',
             'view access logs',
             'export attendance',
+            'view hikvision',
+            'view zkteco',
 
             // Insurance
             'view insurance reports',
@@ -399,6 +411,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
             // Attendance
             'view attendance',
+            'view hikvision',
 
             // Equipment
             'view equipment',
@@ -443,6 +456,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // Attendance
             'view attendance',
             'view access logs',
+            'view hikvision',
 
             // POS
             'view pos',

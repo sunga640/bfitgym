@@ -5,6 +5,7 @@ namespace App\Livewire\AccessControl\Devices;
 use App\Models\AccessControlAgent;
 use App\Models\AccessControlDevice;
 use App\Services\BranchContext;
+use App\Support\Integrations\IntegrationPermission;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -15,6 +16,11 @@ use Livewire\Component;
 #[Title('Access Control Device Assignments')]
 class Index extends Component
 {
+    public string $integration_type = AccessControlDevice::INTEGRATION_HIKVISION;
+    public string $integration_label = 'HIKVision';
+    public string $route_prefix = 'hikvision.devices';
+    public string $route_base = 'hikvision';
+
     public bool $show_assign_modal = false;
     public ?int $assign_device_id = null;
 
@@ -26,7 +32,7 @@ class Index extends Component
 
     public function openAssignModal(int $device_id): void
     {
-        $device = AccessControlDevice::findOrFail($device_id);
+        $device = $this->scopedDevice($device_id);
         $this->authorize('update', $device);
 
         $this->assign_device_id = $device->id;
@@ -42,7 +48,7 @@ class Index extends Component
             return;
         }
 
-        $device = AccessControlDevice::findOrFail($this->assign_device_id);
+        $device = $this->scopedDevice($this->assign_device_id);
         $this->authorize('update', $device);
 
         $branch_id = $device->branch_id;
@@ -71,7 +77,7 @@ class Index extends Component
 
     public function savePrimaryAgent(int $device_id): void
     {
-        $device = AccessControlDevice::findOrFail($device_id);
+        $device = $this->scopedDevice($device_id);
         $this->authorize('update', $device);
 
         $branch_id = $device->branch_id;
@@ -102,6 +108,10 @@ class Index extends Component
 
     public function render(): View
     {
+        if (!IntegrationPermission::canView(auth()->user(), $this->integration_type)) {
+            abort(403);
+        }
+
         $this->authorize('viewAny', AccessControlDevice::class);
 
         $branch_id = app(BranchContext::class)->getCurrentBranchId();
@@ -110,6 +120,7 @@ class Index extends Component
         $devices = AccessControlDevice::query()
             ->with(['primaryAgent', 'agents'])
             ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
+            ->forIntegration($this->integration_type)
             ->withCount([
                 'deviceCommands as pending_commands_count' => fn($q) => $q->where('status', 'pending'),
                 'deviceCommands as failed_commands_count' => fn($q) => $q->where('status', 'failed'),
@@ -132,6 +143,16 @@ class Index extends Component
             'devices' => $devices,
             'agents' => $agents,
             'stale_minutes' => $stale_minutes,
+            'integration_label' => $this->integration_label,
+            'route_prefix' => $this->route_prefix,
+            'route_base' => $this->route_base,
         ]);
+    }
+
+    protected function scopedDevice(int $device_id): AccessControlDevice
+    {
+        return AccessControlDevice::query()
+            ->forIntegration($this->integration_type)
+            ->findOrFail($device_id);
     }
 }

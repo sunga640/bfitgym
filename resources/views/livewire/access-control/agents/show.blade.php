@@ -2,7 +2,7 @@
     {{-- Header --}}
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-4">
-            <flux:button href="{{ route('access-control.agents.index') }}" wire:navigate variant="ghost" icon="arrow-left" size="sm" />
+            <flux:button href="{{ route($route_base . '.agents.index') }}" wire:navigate variant="ghost" icon="arrow-left" size="sm" />
             <div>
                 <div class="flex items-center gap-3">
                     <flux:heading size="xl">{{ $agent->name }}</flux:heading>
@@ -26,7 +26,7 @@
                     @endif
                 </div>
                 <flux:subheading>
-                    <code class="rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-700">{{ $agent->uuid }}</code>
+                    {{ $integration_label }} • <code class="rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-700">{{ $agent->uuid }}</code>
                 </flux:subheading>
             </div>
         </div>
@@ -144,7 +144,7 @@
                                         <flux:icon.computer-desktop class="h-4 w-4 text-zinc-600 dark:text-zinc-300" />
                                     </div>
                                     <div>
-                                        <a href="{{ route('access-control.devices.show', $device) }}" wire:navigate class="font-medium text-zinc-900 hover:underline dark:text-white">
+                                        <a href="{{ route($route_base . '.devices.show', $device) }}" wire:navigate class="font-medium text-zinc-900 hover:underline dark:text-white">
                                             {{ $device->name }}
                                         </a>
                                         <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $device->serial_number }}</p>

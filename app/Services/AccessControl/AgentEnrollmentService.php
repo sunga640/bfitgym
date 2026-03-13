@@ -33,12 +33,18 @@ class AgentEnrollmentService
         User $actor,
         array $device_ids = [],
         ?string $label = null,
-        int $expires_in_minutes = 30
+        int $expires_in_minutes = 30,
+        string $integration_type = AccessControlDevice::INTEGRATION_HIKVISION,
+        ?string $provider = null,
     ): array {
-        // Validate devices belong to the same branch
-        $valid_device_ids = $this->validateDeviceIds($device_ids, $branch->id);
+        $provider = $provider ?: ($integration_type === AccessControlDevice::INTEGRATION_ZKTECO
+            ? AccessControlDevice::PROVIDER_ZKTECO_AGENT
+            : AccessControlDevice::PROVIDER_HIKVISION_AGENT);
 
-        return DB::transaction(function () use ($branch, $actor, $valid_device_ids, $label, $expires_in_minutes) {
+        // Validate devices belong to the same branch
+        $valid_device_ids = $this->validateDeviceIds($device_ids, $branch->id, $integration_type, $provider);
+
+        return DB::transaction(function () use ($branch, $actor, $valid_device_ids, $label, $expires_in_minutes, $integration_type, $provider) {
             // Generate random enrollment code (64 chars)
             $plaintext_code = Str::random(64);
             $code_hash = hash('sha256', $plaintext_code);
@@ -51,12 +57,16 @@ class AgentEnrollmentService
                 'name' => 'Agent-' . substr($agent_uuid, 0, 8),
                 'os' => 'windows',
                 'status' => AccessControlAgent::STATUS_ACTIVE,
+                'supported_providers' => [$provider],
+                'default_provider' => $provider,
                 'secret_hash' => '', // Will be set during registration
             ]);
 
             // Create enrollment
             $enrollment = AccessControlAgentEnrollment::create([
                 'branch_id' => $branch->id,
+                'integration_type' => $integration_type,
+                'provider' => $provider,
                 'access_control_agent_id' => $agent->id,
                 'code' => $plaintext_code, // Store plaintext for lookup during registration (legacy support)
                 'code_hash' => $code_hash,
@@ -83,6 +93,8 @@ class AgentEnrollmentService
                 'agent_id' => $agent->id,
                 'agent_uuid' => $agent_uuid,
                 'branch_id' => $branch->id,
+                'integration_type' => $integration_type,
+                'provider' => $provider,
                 'actor_user_id' => $actor->id,
                 'device_ids' => $valid_device_ids,
                 'expires_at' => $enrollment->expires_at->toIso8601String(),
@@ -157,18 +169,36 @@ class AgentEnrollmentService
             $agent = $enrollment->agent;
 
             if (!$agent) {
-                throw new \RuntimeException('Pre-created agent not found for enrollment.');
+                $agent = AccessControlAgent::create([
+                    'branch_id' => $enrollment->branch_id,
+                    'uuid' => (string) Str::uuid(),
+                    'name' => $agent_name,
+                    'os' => $os,
+                    'app_version' => $app_version,
+                    'status' => AccessControlAgent::STATUS_ACTIVE,
+                    'supported_providers' => [$enrollment->provider ?: AccessControlDevice::PROVIDER_HIKVISION_AGENT],
+                    'default_provider' => $enrollment->provider ?: AccessControlDevice::PROVIDER_HIKVISION_AGENT,
+                    'secret_hash' => '',
+                ]);
             }
 
             // Generate new secure token
             $plaintext_token = Str::random(64);
             $token_hash = hash('sha256', $plaintext_token);
 
+            $provider = $enrollment->provider ?: AccessControlDevice::PROVIDER_HIKVISION_AGENT;
+            $providers = $agent->providerList();
+            if (!in_array($provider, $providers, true)) {
+                $providers[] = $provider;
+            }
+
             // Update agent with registration details
             $agent->update([
                 'name' => $agent_name,
                 'os' => $os,
                 'app_version' => $app_version,
+                'supported_providers' => array_values(array_unique($providers)),
+                'default_provider' => $provider,
                 'secret_hash' => $token_hash,
                 'last_seen_at' => now(),
             ]);
@@ -205,7 +235,7 @@ class AgentEnrollmentService
     /**
      * Validate that device IDs belong to the specified branch.
      */
-    protected function validateDeviceIds(array $device_ids, int $branch_id): array
+    protected function validateDeviceIds(array $device_ids, int $branch_id, string $integration_type, ?string $provider = null): array
     {
         if (empty($device_ids)) {
             return [];
@@ -213,6 +243,8 @@ class AgentEnrollmentService
 
         return AccessControlDevice::query()
             ->where('branch_id', $branch_id)
+            ->forIntegration($integration_type)
+            ->when($provider, fn($q) => $q->forProvider($provider))
             ->whereIn('id', $device_ids)
             ->pluck('id')
             ->all();

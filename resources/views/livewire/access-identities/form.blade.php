@@ -1,9 +1,9 @@
 <div class="flex h-full w-full flex-1 flex-col gap-6 p-6">
     <div class="flex items-center gap-4">
-        <flux:button href="{{ route('access-identities.index') }}" wire:navigate variant="ghost" icon="arrow-left" size="sm" />
+        <flux:button href="{{ route($route_prefix . '.index') }}" wire:navigate variant="ghost" icon="arrow-left" size="sm" />
         <div>
             <flux:heading size="xl">
-                {{ $isEditing ? __('Edit Access Identity') : __('Add Access Identity') }}
+                {{ $isEditing ? __('Edit :integration Identity', ['integration' => $integration_label]) : __('Add :integration Identity', ['integration' => $integration_label]) }}
             </flux:heading>
             <flux:subheading>
                 {{ __('Link a member or staff to a device user ID and card number.') }}
@@ -85,7 +85,7 @@
         </div>
 
         <div class="flex items-center justify-end gap-3">
-            <flux:button href="{{ route('access-identities.index') }}" wire:navigate variant="ghost">
+            <flux:button href="{{ route($route_prefix . '.index') }}" wire:navigate variant="ghost">
                 {{ __('Cancel') }}
             </flux:button>
             <flux:button type="submit" wire:loading.attr="disabled">
@@ -95,4 +95,3 @@
         </div>
     </form>
 </div>
-

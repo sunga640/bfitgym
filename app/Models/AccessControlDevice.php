@@ -41,12 +41,23 @@ class AccessControlDevice extends Model
     public const CONNECTION_OFFLINE = 'offline';
     public const CONNECTION_UNKNOWN = 'unknown';
 
+    /** Integration Types */
+    public const INTEGRATION_HIKVISION = 'hikvision';
+    public const INTEGRATION_ZKTECO = 'zkteco';
+
+    /** Providers */
+    public const PROVIDER_HIKVISION_AGENT = 'hikvision_agent';
+    public const PROVIDER_ZKBIO_PLATFORM = 'zkbio_platform';
+    public const PROVIDER_ZKTECO_AGENT = 'zkteco_agent';
+
     // -------------------------------------------------------------------------
     // Properties
     // -------------------------------------------------------------------------
 
     protected $fillable = [
         'branch_id',
+        'integration_type',
+        'provider',
         'access_control_agent_id',
         'name',
         'device_model',
@@ -87,6 +98,8 @@ class AccessControlDevice extends Model
             'last_heartbeat_at' => 'datetime',
             'logs_synced_until' => 'datetime',
             'capabilities' => 'array',
+            'integration_type' => 'string',
+            'provider' => 'string',
         ];
     }
 
@@ -224,6 +237,30 @@ class AccessControlDevice extends Model
         };
     }
 
+    /**
+     * Get supported providers for an integration type.
+     *
+     * @return array<int, string>
+     */
+    public static function providersForIntegration(string $integration_type): array
+    {
+        return match ($integration_type) {
+            self::INTEGRATION_ZKTECO => [
+                self::PROVIDER_ZKBIO_PLATFORM,
+                self::PROVIDER_ZKTECO_AGENT,
+            ],
+            default => [self::PROVIDER_HIKVISION_AGENT],
+        };
+    }
+
+    public static function integrationTypeForProvider(?string $provider): string
+    {
+        return match ($provider) {
+            self::PROVIDER_ZKBIO_PLATFORM, self::PROVIDER_ZKTECO_AGENT => self::INTEGRATION_ZKTECO,
+            default => self::INTEGRATION_HIKVISION,
+        };
+    }
+
     // -------------------------------------------------------------------------
     // Scopes
     // -------------------------------------------------------------------------
@@ -250,6 +287,26 @@ class AccessControlDevice extends Model
                 $q->whereNull('last_sync_at')
                     ->orWhereRaw('last_sync_at < DATE_SUB(NOW(), INTERVAL sync_interval_minutes MINUTE)');
             });
+    }
+
+    public function scopeForIntegration($query, string $integration_type)
+    {
+        return $query->where('integration_type', $integration_type);
+    }
+
+    public function scopeHikvision($query)
+    {
+        return $query->where('integration_type', self::INTEGRATION_HIKVISION);
+    }
+
+    public function scopeZkteco($query)
+    {
+        return $query->where('integration_type', self::INTEGRATION_ZKTECO);
+    }
+
+    public function scopeForProvider($query, string $provider)
+    {
+        return $query->where('provider', $provider);
     }
 
     // -------------------------------------------------------------------------

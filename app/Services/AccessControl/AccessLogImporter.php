@@ -39,6 +39,7 @@ class AccessLogImporter
                     // Find identity by device_user_id or card number
                     $identity = AccessIdentity::query()
                         ->where('branch_id', $branch_id)
+                        ->where('integration_type', $device->integration_type)
                         ->when($normalized['device_user_id'], fn($q) => $q->where('device_user_id', $normalized['device_user_id']))
                         ->when(!$normalized['device_user_id'] && $normalized['card_number'], fn($q) => $q->where('card_number', $normalized['card_number']))
                         ->active()
@@ -91,6 +92,8 @@ class AccessLogImporter
 
                     AccessLog::create([
                         'branch_id' => $branch_id,
+                        'integration_type' => $device->integration_type,
+                        'provider' => $device->provider,
                         'access_control_device_id' => $device->id,
                         'access_identity_id' => $identity->id,
                         'subject_type' => $subject_type,

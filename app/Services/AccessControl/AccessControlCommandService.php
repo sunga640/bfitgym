@@ -119,6 +119,7 @@ class AccessControlCommandService
         $identity = AccessIdentity::query()
             ->withoutBranchScope()
             ->where('branch_id', $member->branch_id)
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
             ->first();
@@ -129,6 +130,8 @@ class AccessControlCommandService
 
         return AccessIdentity::create([
             'branch_id' => $member->branch_id,
+            'integration_type' => AccessControlDevice::INTEGRATION_HIKVISION,
+            'provider' => AccessControlDevice::PROVIDER_HIKVISION_AGENT,
             'subject_type' => AccessIdentity::SUBJECT_MEMBER,
             'subject_id' => $member->id,
             'device_user_id' => $member->member_no,
@@ -156,6 +159,7 @@ class AccessControlCommandService
         $devices = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $member->branch_id)
+            ->forIntegration(AccessControlDevice::INTEGRATION_HIKVISION)
             ->active()
             ->get();
 
@@ -246,6 +250,8 @@ class AccessControlCommandService
 
             $command = AccessControlDeviceCommand::create([
                 'branch_id' => $device->branch_id,
+                'integration_type' => $device->integration_type,
+                'provider' => $device->provider,
                 'access_control_device_id' => $device->id,
                 'subject_type' => $subject_type,
                 'subject_id' => $subject_id,
@@ -282,10 +288,14 @@ class AccessControlCommandService
         ?int $subject_id = null,
         int $priority = 0,
         ?Carbon $available_at = null,
+        string $integration_type = AccessControlDevice::INTEGRATION_HIKVISION,
+        ?string $provider = null,
     ): int {
         $devices = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $branch_id)
+            ->forIntegration($integration_type)
+            ->when($provider, fn($q) => $q->forProvider($provider))
             ->active()
             ->get();
 
@@ -343,6 +353,7 @@ class AccessControlCommandService
         $devices = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $member->branch_id)
+            ->forIntegration(AccessControlDevice::INTEGRATION_HIKVISION)
             ->active()
             ->get();
 
@@ -447,6 +458,7 @@ class AccessControlCommandService
         $device = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $member->branch_id)
+            ->forIntegration(AccessControlDevice::INTEGRATION_HIKVISION)
             ->active()
             ->first();
 
@@ -526,6 +538,7 @@ class AccessControlCommandService
         $device = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $user->branch_id)
+            ->forIntegration(AccessControlDevice::INTEGRATION_HIKVISION)
             ->active()
             ->first();
 
@@ -645,6 +658,7 @@ class AccessControlCommandService
         $devices = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $user->branch_id)
+            ->forIntegration(AccessControlDevice::INTEGRATION_HIKVISION)
             ->active()
             ->get();
 

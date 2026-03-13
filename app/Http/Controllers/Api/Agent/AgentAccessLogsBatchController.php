@@ -43,6 +43,7 @@ class AgentAccessLogsBatchController extends Controller
 
         $identities = AccessIdentity::query()
             ->where('branch_id', $device->branch_id)
+            ->where('integration_type', $device->integration_type)
             ->whereIn('device_user_id', $device_user_ids)
             ->get(['id', 'device_user_id', 'subject_type', 'subject_id'])
             ->keyBy('device_user_id');
@@ -61,6 +62,8 @@ class AgentAccessLogsBatchController extends Controller
 
             $rows[] = [
                 'branch_id' => $device->branch_id,
+                'integration_type' => $device->integration_type,
+                'provider' => $device->provider,
                 'access_control_device_id' => $device->id,
                 'access_identity_id' => $identity->id,
                 'device_event_uid' => $event['device_event_uid'],

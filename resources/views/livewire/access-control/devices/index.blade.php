@@ -1,14 +1,14 @@
 <div class="flex h-full w-full flex-1 flex-col gap-6 p-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl">{{ __('Device Assignments') }}</flux:heading>
-            <flux:subheading>{{ __('Monitor device health and assign agents (primary or via multi-agent assignment).') }}</flux:subheading>
+            <flux:heading size="xl">{{ __(':integration Devices', ['integration' => $integration_label]) }}</flux:heading>
+            <flux:subheading>{{ __('Monitor device health and assign agents for :integration integration.', ['integration' => $integration_label]) }}</flux:subheading>
         </div>
         <div class="flex items-center gap-2">
-            <flux:button href="{{ route('access-control.agents.index') }}" wire:navigate variant="ghost" icon="users">
+            <flux:button href="{{ route($route_base . '.agents.index') }}" wire:navigate variant="ghost" icon="users">
                 {{ __('Agents') }}
             </flux:button>
-            <flux:button href="{{ route('access-control.devices.create') }}" wire:navigate icon="plus">
+            <flux:button href="{{ route($route_prefix . '.create') }}" wire:navigate icon="plus">
                 {{ __('Add Device') }}
             </flux:button>
         </div>
@@ -45,7 +45,7 @@
                         <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
                             <td class="px-4 py-3">
                                 <div>
-                                    <a href="{{ route('access-control.devices.show', $device) }}" wire:navigate class="font-medium text-zinc-900 hover:underline dark:text-white">
+                                    <a href="{{ route($route_prefix . '.show', $device) }}" wire:navigate class="font-medium text-zinc-900 hover:underline dark:text-white">
                                         {{ $device->name }}
                                     </a>
                                     <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $device->serial_number }}</p>
@@ -131,7 +131,7 @@
                                 </div>
                                 <div class="flex items-center justify-end gap-1">
                                     <flux:button
-                                        href="{{ route('access-control.devices.show', $device) }}"
+                                        href="{{ route($route_prefix . '.show', $device) }}"
                                         wire:navigate
                                         variant="ghost"
                                         size="sm"
@@ -139,7 +139,7 @@
                                         title="{{ __('View') }}"
                                     />
                                     <flux:button
-                                        href="{{ route('access-control.devices.edit', $device) }}"
+                                        href="{{ route($route_prefix . '.edit', $device) }}"
                                         wire:navigate
                                         variant="ghost"
                                         size="sm"
@@ -165,7 +165,7 @@
                                         <p class="font-medium text-zinc-900 dark:text-white">{{ __('No devices found') }}</p>
                                         <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Add devices first, then assign agents.') }}</p>
                                     </div>
-                                    <flux:button href="{{ route('access-control.devices.create') }}" wire:navigate icon="plus" size="sm">
+                                    <flux:button href="{{ route($route_prefix . '.create') }}" wire:navigate icon="plus" size="sm">
                                         {{ __('Add Device') }}
                                     </flux:button>
                                 </div>

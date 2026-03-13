@@ -118,6 +118,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
         Route::view('/', 'subscriptions.index')->name('index');
         Route::view('/create', 'subscriptions.create')->name('create');
+        Route::get('/{subscription}/edit', function (MemberSubscription $subscription) {
+            return view('subscriptions.edit', compact('subscription'));
+        })->name('edit');
         Route::get('/{subscription}', function (MemberSubscription $subscription) {
             return view('subscriptions.show', compact('subscription'));
         })->name('show');
@@ -254,40 +257,83 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Access Control & Attendance
+    | Access Control Integrations (HIKVision + ZKTeco)
     |--------------------------------------------------------------------------
     */
 
-    Route::prefix('attendance')->name('attendance.')->group(function () {
-        Route::view('/', 'attendance.index')->name('index');
-    });
+    // HIKVision (existing attendance/access-control domain)
+    Route::prefix('hikvision')->name('hikvision.')->group(function () {
+        Route::get('/', \App\Livewire\Hikvision\Overview::class)->name('overview');
+        Route::get('/logs', \App\Livewire\Hikvision\Logs\Index::class)->name('logs.index');
 
-    Route::prefix('access-devices')->name('access-devices.')->group(function () {
-        Route::view('/', 'access-devices.index')->name('index');
-        Route::view('/create', 'access-devices.create')->name('create');
-        Route::get('/{accessControlDevice}/edit', fn(\App\Models\AccessControlDevice $accessControlDevice) => view('access-devices.edit', compact('accessControlDevice')))->name('edit');
-    });
-
-    Route::prefix('access-identities')->name('access-identities.')->group(function () {
-        Route::view('/', 'access-identities.index')->name('index');
-        Route::view('/create', 'access-identities.create')->name('create');
-        Route::get('/{accessIdentity}/edit', fn(\App\Models\AccessIdentity $accessIdentity) => view('access-identities.edit', compact('accessIdentity')))->name('edit');
-    });
-
-    // Access Control (Agents + Enrollment + Assignments)
-    Route::prefix('access-control')->name('access-control.')->group(function () {
-        // Devices CRUD
         Route::get('/devices', \App\Livewire\AccessControl\Devices\Index::class)->name('devices.index');
         Route::get('/devices/create', \App\Livewire\AccessControl\Devices\Form::class)->name('devices.create');
         Route::get('/devices/{device}', \App\Livewire\AccessControl\Devices\Show::class)->name('devices.show');
         Route::get('/devices/{device}/edit', \App\Livewire\AccessControl\Devices\Form::class)->name('devices.edit');
 
-        // Agents
         Route::get('/agents', \App\Livewire\AccessControl\Agents\Index::class)->name('agents.index');
         Route::get('/agents/{agent}', \App\Livewire\AccessControl\Agents\Show::class)->name('agents.show');
 
-        // Enrollments
         Route::get('/enrollments', \App\Livewire\AccessControl\Enrollments\Index::class)->name('enrollments.index');
+
+        Route::get('/identities', \App\Livewire\AccessIdentities\Index::class)->name('identities.index');
+        Route::get('/identities/create', \App\Livewire\AccessIdentities\Form::class)->name('identities.create');
+        Route::get('/identities/{identity}/edit', \App\Livewire\AccessIdentities\Form::class)->name('identities.edit');
+    });
+
+    // ZKTeco (provider-based: platform preferred, agent fallback)
+    Route::prefix('zkteco')->name('zkteco.')->group(function () {
+        Route::get('/', \App\Livewire\Zkteco\Overview::class)->name('overview');
+        Route::get('/logs', \App\Livewire\Zkteco\Logs\Index::class)->name('logs.index');
+
+        Route::get('/devices', \App\Livewire\Zkteco\Devices\Index::class)->name('devices.index');
+        Route::get('/devices/create', \App\Livewire\Zkteco\Devices\Form::class)->name('devices.create');
+        Route::get('/devices/{device}', \App\Livewire\Zkteco\Devices\Show::class)->name('devices.show');
+        Route::get('/devices/{device}/edit', \App\Livewire\Zkteco\Devices\Form::class)->name('devices.edit');
+
+        Route::get('/identities', \App\Livewire\Zkteco\Identities\Index::class)->name('identities.index');
+        Route::get('/identities/create', \App\Livewire\Zkteco\Identities\Form::class)->name('identities.create');
+        Route::get('/identities/{identity}/edit', \App\Livewire\Zkteco\Identities\Form::class)->name('identities.edit');
+
+        Route::get('/enrollments', \App\Livewire\Zkteco\Enrollments\Index::class)->name('enrollments.index');
+        Route::get('/agents', \App\Livewire\Zkteco\Agents\Index::class)->name('agents.index');
+        Route::get('/agents/{agent}', \App\Livewire\Zkteco\Agents\Show::class)->name('agents.show');
+
+        Route::get('/settings', \App\Livewire\Zkteco\Settings::class)->name('settings');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Legacy Integration Routes (Backward Compatibility)
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('attendance')->name('attendance.')->group(function () {
+        Route::redirect('/', '/hikvision/logs')->name('index');
+    });
+
+    Route::prefix('access-devices')->name('access-devices.')->group(function () {
+        Route::redirect('/', '/hikvision/devices')->name('index');
+        Route::redirect('/create', '/hikvision/devices/create')->name('create');
+        Route::get('/{accessControlDevice}/edit', fn(\App\Models\AccessControlDevice $accessControlDevice) => redirect()->route('hikvision.devices.edit', $accessControlDevice))->name('edit');
+    });
+
+    Route::prefix('access-identities')->name('access-identities.')->group(function () {
+        Route::redirect('/', '/hikvision/identities')->name('index');
+        Route::redirect('/create', '/hikvision/identities/create')->name('create');
+        Route::get('/{accessIdentity}/edit', fn(\App\Models\AccessIdentity $accessIdentity) => redirect()->route('hikvision.identities.edit', $accessIdentity))->name('edit');
+    });
+
+    Route::prefix('access-control')->name('access-control.')->group(function () {
+        Route::redirect('/devices', '/hikvision/devices')->name('devices.index');
+        Route::redirect('/devices/create', '/hikvision/devices/create')->name('devices.create');
+        Route::get('/devices/{device}', fn(\App\Models\AccessControlDevice $device) => redirect()->route('hikvision.devices.show', $device))->name('devices.show');
+        Route::get('/devices/{device}/edit', fn(\App\Models\AccessControlDevice $device) => redirect()->route('hikvision.devices.edit', $device))->name('devices.edit');
+
+        Route::redirect('/agents', '/hikvision/agents')->name('agents.index');
+        Route::get('/agents/{agent}', fn(\App\Models\AccessControlAgent $agent) => redirect()->route('hikvision.agents.show', $agent))->name('agents.show');
+
+        Route::redirect('/enrollments', '/hikvision/enrollments')->name('enrollments.index');
     });
 
     /*

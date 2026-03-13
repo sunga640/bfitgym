@@ -24,7 +24,7 @@
                         <flux:select
                             id="member_id"
                             wire:model.live="member_id"
-                            :disabled="$is_renewal"
+                            :disabled="$is_renewal || $is_editing"
                         >
                             <option value="">{{ __('Select member') }}</option>
                             @foreach($members as $member)
@@ -43,7 +43,7 @@
                             <option value="">{{ __('Select package') }}</option>
                             @foreach($packages as $package)
                                 <option value="{{ $package->id }}">
-                                    {{ $package->name }} — {{ money($package->price) }}
+                                    {{ $package->name }} - {{ money($package->price) }}{{ $package->status !== 'active' ? ' (' . __('Inactive') . ')' : '' }}
                                 </option>
                             @endforeach
                         </flux:select>
@@ -112,7 +112,12 @@
                         <label class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-200">
                             {{ __('Payment method') }}
                         </label>
-                        <flux:input type="text" wire:model.live="payment_method" />
+                        <flux:select wire:model.live="payment_method">
+                            <option value="cash">{{ __('Cash') }}</option>
+                            <option value="card">{{ __('Card') }}</option>
+                            <option value="mobile_money">{{ __('Mobile Money') }}</option>
+                            <option value="bank_transfer">{{ __('Bank Transfer') }}</option>
+                        </flux:select>
                         @error('payment_method') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -169,17 +174,25 @@
                 <p class="text-sm text-zinc-500 dark:text-zinc-400">
                     @if($is_renewal)
                         {{ __('You are renewing an existing subscription. The new cycle will begin after the current one ends.') }}
+                    @elseif($is_editing)
+                        {{ __('Review the changes and save to update this subscription cycle.') }}
                     @else
                         {{ __('Review the details above and save to start the subscription immediately.') }}
                     @endif
                 </p>
                 <div class="mt-6 flex flex-col gap-2">
                     <flux:button type="submit" variant="primary" wire:loading.attr="disabled" icon="check">
-                        {{ $is_renewal ? __('Renew Subscription') : __('Create Subscription') }}
+                        @if($is_renewal)
+                            {{ __('Renew Subscription') }}
+                        @elseif($is_editing)
+                            {{ __('Update Subscription') }}
+                        @else
+                            {{ __('Create Subscription') }}
+                        @endif
                     </flux:button>
                     <flux:button
                         variant="ghost"
-                        href="{{ route('subscriptions.index') }}"
+                        href="{{ $is_editing ? route('subscriptions.show', $subscription) : route('subscriptions.index') }}"
                         wire:navigate
                     >
                         {{ __('Cancel') }}
@@ -189,4 +202,3 @@
         </div>
     </form>
 </div>
-

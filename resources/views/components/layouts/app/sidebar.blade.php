@@ -70,6 +70,134 @@
                 width: 100% !important;
                 max-width: 100% !important;
             }
+
+            .side-nav {
+                scrollbar-width: thin;
+            }
+
+            .side-group {
+                border-radius: 0.85rem;
+            }
+
+            .side-group summary {
+                list-style: none;
+            }
+
+            .side-group summary::-webkit-details-marker {
+                display: none;
+            }
+
+            .side-parent {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                padding: 0.6rem 0.75rem;
+                border-radius: 0.75rem;
+                color: rgb(82 82 91);
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .dark .side-parent {
+                color: rgb(212 212 216);
+            }
+
+            .side-parent:hover {
+                background: rgba(255, 255, 255, 0.6);
+                color: rgb(39 39 42);
+            }
+
+            .dark .side-parent:hover {
+                background: rgba(39, 39, 42, 0.65);
+                color: rgb(244 244 245);
+            }
+
+            .side-parent-active {
+                background: rgba(249, 115, 22, 0.14);
+                color: rgb(194 65 12);
+            }
+
+            .dark .side-parent-active {
+                background: rgba(249, 115, 22, 0.22);
+                color: rgb(254 215 170);
+            }
+
+            .side-parent-left {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.6rem;
+                min-width: 0;
+            }
+
+            .side-parent-label {
+                font-size: 0.86rem;
+                font-weight: 600;
+                line-height: 1.2rem;
+            }
+
+            .side-icon {
+                width: 1rem;
+                text-align: center;
+            }
+
+            .side-chevron {
+                font-size: 0.75rem;
+                transition: transform 0.2s ease;
+            }
+
+            .side-group[open] .side-chevron {
+                transform: rotate(180deg);
+            }
+
+            .side-children {
+                margin-left: 1.75rem;
+                margin-top: 0.2rem;
+                margin-bottom: 0.35rem;
+                display: grid;
+                gap: 0.2rem;
+                border-left: 1px solid rgba(161, 161, 170, 0.35);
+                padding-left: 0.65rem;
+            }
+
+            .dark .side-children {
+                border-left-color: rgba(82, 82, 91, 0.7);
+            }
+
+            .side-child {
+                display: block;
+                border-radius: 0.6rem;
+                padding: 0.42rem 0.55rem;
+                color: rgb(82 82 91);
+                font-size: 0.82rem;
+                font-weight: 500;
+                line-height: 1.2rem;
+                transition: all 0.2s ease;
+            }
+
+            .dark .side-child {
+                color: rgb(212 212 216);
+            }
+
+            .side-child:hover {
+                background: rgba(255, 255, 255, 0.5);
+                color: rgb(39 39 42);
+            }
+
+            .dark .side-child:hover {
+                background: rgba(39, 39, 42, 0.55);
+                color: rgb(244 244 245);
+            }
+
+            .side-child-active {
+                background: rgba(249, 115, 22, 0.14);
+                color: rgb(194 65 12);
+            }
+
+            .dark .side-child-active {
+                background: rgba(249, 115, 22, 0.22);
+                color: rgb(254 215 170);
+            }
         </style>
     </head>
     <body class="min-h-screen overflow-x-hidden">
@@ -109,266 +237,306 @@
                     @endif
                 @endauth
 
-                <flux:navlist variant="outline" class="flex-1 overflow-y-auto -mx-2">
-                    {{-- Overview --}}
-                    <flux:navlist.group :heading="__('Overview')" class="grid">
-                        <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                            {{ __('Dashboard') }}
-                        </flux:navlist.item>
-                        <flux:navlist.item icon="calendar" :href="route('calendar.index')" :current="request()->routeIs('calendar.*')" wire:navigate>
-                            {{ __('Calendar') }}
-                        </flux:navlist.item>
-                    </flux:navlist.group>
+                <nav class="side-nav flex-1 overflow-y-auto -mx-2 px-2">
+    <div class="space-y-1.5">
+        <details class="side-group" @if(request()->routeIs('dashboard', 'calendar.*')) open @endif>
+            <summary class="side-parent {{ request()->routeIs('dashboard', 'calendar.*') ? 'side-parent-active' : '' }}">
+                <span class="side-parent-left">
+                    <i class="fa-sharp-duotone fa-solid fa-gauge-high side-icon" aria-hidden="true"></i>
+                    <span class="side-parent-label">{{ __('Overview') }}</span>
+                </span>
+                <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="side-children">
+                <a href="{{ route('dashboard') }}" class="side-child {{ request()->routeIs('dashboard') ? 'side-child-active' : '' }}" wire:navigate>
+                    {{ __('Dashboard') }}
+                </a>
+                <a href="{{ route('calendar.index') }}" class="side-child {{ request()->routeIs('calendar.*') ? 'side-child-active' : '' }}" wire:navigate>
+                    {{ __('Calendar') }}
+                </a>
+            </div>
+        </details>
 
-                    {{-- Organization --}}
-                    @canany(['view branches', 'view users', 'assign roles'])
-                        <flux:navlist.group :heading="__('Organization')" class="grid" expandable :expanded="request()->routeIs('branches.*', 'organization.branches.*', 'users.*', 'roles.*')">
-                            @can('view branches')
-                                <flux:navlist.item icon="building-office-2" :href="route('organization.branches.index')" :current="request()->routeIs('organization.branches.*')" wire:navigate>
-                                    {{ __('Branches') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view users')
-                                <flux:navlist.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
-                                    {{ __('Staff / Users') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('assign roles')
-                                <flux:navlist.item icon="shield-check" :href="route('roles.index')" :current="request()->routeIs('roles.*')" wire:navigate>
-                                    {{ __('Roles & Permissions') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
-                    @endcanany
-
-                    {{-- Members --}}
-                    @canany(['view members', 'view insurers'])
-                        <flux:navlist.group :heading="__('Members')" class="grid" expandable :expanded="request()->routeIs('members.*', 'insurers.*', 'member-insurances.*')">
-                            @can('view members')
-                                <flux:navlist.item icon="user-group" :href="route('members.index')" :current="request()->routeIs('members.*')" wire:navigate>
-                                    {{ __('Members') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view insurers')
-                                <flux:navlist.item icon="heart" :href="route('insurers.index')" :current="request()->routeIs('insurers.*')" wire:navigate>
-                                    {{ __('Insurers') }}
-                                </flux:navlist.item>
-                                <flux:navlist.item icon="clipboard-document-list" :href="route('member-insurances.index')" :current="request()->routeIs('member-insurances.*')" wire:navigate>
-                                    {{ __('Member Policies') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
-                    @endcanany
-
-                    {{-- Memberships --}}
-                    @canany(['view membership-packages', 'view subscriptions'])
-                        <flux:navlist.group :heading="__('Memberships')" class="grid" expandable :expanded="request()->routeIs('membership-packages.*', 'subscriptions.*')">
-                            @can('view membership-packages')
-                                <flux:navlist.item icon="credit-card" :href="route('membership-packages.index')" :current="request()->routeIs('membership-packages.*')" wire:navigate>
-                                    {{ __('Packages') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view subscriptions')
-                                <flux:navlist.item icon="arrow-path" :href="route('subscriptions.index')" :current="request()->routeIs('subscriptions.*')" wire:navigate>
-                                    {{ __('Subscriptions') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
-                    @endcanany
-
-                    {{-- Classes --}}
-                    @canany(['view classes', 'view class bookings'])
-                        <flux:navlist.group :heading="__('Classes')" class="grid" expandable :expanded="request()->routeIs('class-types.*', 'class-sessions.*', 'class-bookings.*')">
-                            @can('view classes')
-                                <flux:navlist.item icon="rectangle-stack" :href="route('class-types.index')" :current="request()->routeIs('class-types.*')" wire:navigate>
-                                    {{ __('Class Types') }}
-                                </flux:navlist.item>
-                                <flux:navlist.item icon="clock" :href="route('class-sessions.index')" :current="request()->routeIs('class-sessions.*')" wire:navigate>
-                                    {{ __('Sessions / Schedule') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view class bookings')
-                                <flux:navlist.item icon="ticket" :href="route('class-bookings.index')" :current="request()->routeIs('class-bookings.*')" wire:navigate>
-                                    {{ __('Bookings') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
-                    @endcanany
-
-                    {{-- Training --}}
-                    @can('view workout plans')
-                        <flux:navlist.group :heading="__('Training')" class="grid" expandable :expanded="request()->routeIs('exercises.*', 'workout-plans.*', 'member-workout-plans.*')">
-                            <flux:navlist.item icon="fire" :href="route('exercises.index')" :current="request()->routeIs('exercises.*')" wire:navigate>
-                                {{ __('Exercises') }}
-                            </flux:navlist.item>
-                            <flux:navlist.item icon="document-text" :href="route('workout-plans.index')" :current="request()->routeIs('workout-plans.*')" wire:navigate>
-                                {{ __('Workout Plans') }}
-                            </flux:navlist.item>
-                            @can('assign workout plans')
-                                <flux:navlist.item icon="clipboard-document-check" :href="route('member-workout-plans.index')" :current="request()->routeIs('member-workout-plans.*')" wire:navigate>
-                                    {{ __('Assigned Plans') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
+        @canany(['view branches', 'view users', 'assign roles'])
+            <details class="side-group" @if(request()->routeIs('branches.*', 'organization.branches.*', 'users.*', 'roles.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('branches.*', 'organization.branches.*', 'users.*', 'roles.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-buildings side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('Organization') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    @can('view branches')
+                        <a href="{{ route('organization.branches.index') }}" class="side-child {{ request()->routeIs('organization.branches.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Branches') }}</a>
                     @endcan
-
-                    {{-- Events --}}
-                    @can('view events')
-                        <flux:navlist.group :heading="__('Events')" class="grid" expandable :expanded="request()->routeIs('events.*', 'event-registrations.*')">
-                            <flux:navlist.item icon="calendar-days" :href="route('events.index')" :current="request()->routeIs('events.*')" wire:navigate>
-                                {{ __('Events') }}
-                            </flux:navlist.item>
-                            @can('manage event registrations')
-                                <flux:navlist.item icon="user-plus" :href="route('event-registrations.index')" :current="request()->routeIs('event-registrations.*')" wire:navigate>
-                                    {{ __('Registrations') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
+                    @can('view users')
+                        <a href="{{ route('users.index') }}" class="side-child {{ request()->routeIs('users.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Staff / Users') }}</a>
                     @endcan
-
-                    {{-- POS & Inventory --}}
-                    @canany(['view pos', 'view products', 'view inventory', 'view stock adjustments', 'view purchase orders'])
-                        <flux:navlist.group :heading="__('POS & Inventory')" class="grid" expandable :expanded="request()->routeIs('pos.*', 'pos-sales.*', 'products.*', 'product-categories.*', 'branch-products.*', 'stock-adjustments.*', 'suppliers.*', 'purchase-orders.*')">
-                            @can('view pos')
-                                <flux:navlist.item icon="shopping-cart" :href="route('pos.index')" :current="request()->routeIs('pos.index')" wire:navigate>
-                                    {{ __('Point of Sale') }}
-                                </flux:navlist.item>
-                                <flux:navlist.item icon="receipt-percent" :href="route('pos-sales.index')" :current="request()->routeIs('pos-sales.*')" wire:navigate>
-                                    {{ __('Sales History') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view products')
-                                <flux:navlist.item icon="cube" :href="route('products.index')" :current="request()->routeIs('products.*')" wire:navigate>
-                                    {{ __('Products') }}
-                                </flux:navlist.item>
-                                <flux:navlist.item icon="tag" :href="route('product-categories.index')" :current="request()->routeIs('product-categories.*')" wire:navigate>
-                                    {{ __('Categories') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view inventory')
-                                <flux:navlist.item icon="archive-box" :href="route('branch-products.index')" :current="request()->routeIs('branch-products.*')" wire:navigate>
-                                    {{ __('Stock Levels') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view stock adjustments')
-                                <flux:navlist.item icon="adjustments-horizontal" :href="route('stock-adjustments.index')" :current="request()->routeIs('stock-adjustments.*')" wire:navigate>
-                                    {{ __('Stock Adjustments') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view purchase orders')
-                                <flux:navlist.item icon="truck" :href="route('suppliers.index')" :current="request()->routeIs('suppliers.*')" wire:navigate>
-                                    {{ __('Suppliers') }}
-                                </flux:navlist.item>
-                                <flux:navlist.item icon="clipboard-document" :href="route('purchase-orders.index')" :current="request()->routeIs('purchase-orders.*')" wire:navigate>
-                                    {{ __('Purchase Orders') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
-                    @endcanany
-
-                    {{-- Attendance --}}
-                    @canany(['view attendance', 'view access devices', 'manage access identities'])
-                        <flux:navlist.group :heading="__('Attendance')" class="grid" expandable :expanded="request()->routeIs('attendance.*', 'access-devices.*', 'access-identities.*', 'access-control.*')">
-                            @can('view attendance')
-                                <flux:navlist.item icon="finger-print" :href="route('attendance.index')" :current="request()->routeIs('attendance.*')" wire:navigate>
-                                    {{ __('Attendance Log') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @canany(['view access devices', 'manage access devices'])
-                                <flux:navlist.item icon="cpu-chip" :href="route('access-control.devices.index')" :current="request()->routeIs('access-control.devices.*')" wire:navigate>
-                                    {{ __('Devices') }}
-                                </flux:navlist.item>
-                                <flux:navlist.item icon="users" :href="route('access-control.agents.index')" :current="request()->routeIs('access-control.agents.*')" wire:navigate>
-                                    {{ __('Agents') }}
-                                </flux:navlist.item>
-                                <flux:navlist.item icon="key" :href="route('access-control.enrollments.index')" :current="request()->routeIs('access-control.enrollments.*')" wire:navigate>
-                                    {{ __('Enrollments') }}
-                                </flux:navlist.item>
-                            @endcanany
-                            @can('manage access identities')
-                                <flux:navlist.item icon="identification" :href="route('access-identities.index')" :current="request()->routeIs('access-identities.*')" wire:navigate>
-                                    {{ __('Identities') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
-                    @endcanany
-
-                    {{-- Facilities --}}
-                    @can('view equipment')
-                        <flux:navlist.group :heading="__('Facilities')" class="grid" expandable :expanded="request()->routeIs('locations.*', 'equipment.*', 'equipment-allocations.*')">
-                            <flux:navlist.item icon="map-pin" :href="route('locations.index')" :current="request()->routeIs('locations.*')" wire:navigate>
-                                {{ __('Locations') }}
-                            </flux:navlist.item>
-                            <flux:navlist.item icon="wrench-screwdriver" :href="route('equipment.index')" :current="request()->routeIs('equipment.index', 'equipment.create', 'equipment.edit')" wire:navigate>
-                                {{ __('Equipment') }}
-                            </flux:navlist.item>
-                            @can('view equipment allocations')
-                                <flux:navlist.item icon="squares-plus" :href="route('equipment-allocations.index')" :current="request()->routeIs('equipment-allocations.*')" wire:navigate>
-                                    {{ __('Allocations') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
+                    @can('assign roles')
+                        <a href="{{ route('roles.index') }}" class="side-child {{ request()->routeIs('roles.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Roles & Permissions') }}</a>
                     @endcan
+                </div>
+            </details>
+        @endcanany
 
-                    {{-- Finances --}}
-                    @canany(['view payments', 'view expenses'])
-                        <flux:navlist.group :heading="__('Finances')" class="grid" expandable :expanded="request()->routeIs('payments.*', 'expenses.*', 'expense-categories.*')">
-                            @can('view payments')
-                                <flux:navlist.item icon="banknotes" :href="route('payments.index')" :current="request()->routeIs('payments.*')" wire:navigate>
-                                    {{ __('Payments') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view expenses')
-                                <flux:navlist.item icon="arrow-trending-down" :href="route('expenses.index')" :current="request()->routeIs('expenses.*')" wire:navigate>
-                                    {{ __('Expenses') }}
-                                </flux:navlist.item>
-                                <flux:navlist.item icon="folder" :href="route('expense-categories.index')" :current="request()->routeIs('expense-categories.*')" wire:navigate>
-                                    {{ __('Expense Categories') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
-                    @endcanany
-
-                    {{-- Reports --}}
-                    @canany(['view reports', 'view financial reports', 'view attendance reports', 'view membership reports', 'view insurance reports', 'view pos reports'])
-                        <flux:navlist.group :heading="__('Reports')" class="grid" expandable :expanded="request()->routeIs('reports.*')">
-                            @can('view financial reports')
-                                <flux:navlist.item icon="chart-bar" :href="route('reports.revenue')" :current="request()->routeIs('reports.revenue')" wire:navigate>
-                                    {{ __('Revenue') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view membership reports')
-                                <flux:navlist.item icon="chart-pie" :href="route('reports.memberships')" :current="request()->routeIs('reports.memberships')" wire:navigate>
-                                    {{ __('Memberships') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view attendance reports')
-                                <flux:navlist.item icon="presentation-chart-line" :href="route('reports.attendance')" :current="request()->routeIs('reports.attendance')" wire:navigate>
-                                    {{ __('Attendance') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view insurance reports')
-                                <flux:navlist.item icon="document-chart-bar" :href="route('reports.insurance')" :current="request()->routeIs('reports.insurance')" wire:navigate>
-                                    {{ __('Insurance') }}
-                                </flux:navlist.item>
-                            @endcan
-                            @can('view pos reports')
-                                <flux:navlist.item icon="shopping-bag" :href="route('reports.pos')" :current="request()->routeIs('reports.pos')" wire:navigate>
-                                    {{ __('POS / Sales') }}
-                                </flux:navlist.item>
-                            @endcan
-                        </flux:navlist.group>
-                    @endcanany
-
-                    {{-- Settings --}}
-                    @can('view settings')
-                        <flux:navlist.group class="mt-4 grid">
-                            <flux:navlist.item icon="cog-6-tooth" :href="route('settings.general')" :current="request()->routeIs('settings.*')" wire:navigate>
-                                {{ __('Settings') }}
-                            </flux:navlist.item>
-                        </flux:navlist.group>
+        @canany(['view members', 'view insurers'])
+            <details class="side-group" @if(request()->routeIs('members.*', 'insurers.*', 'member-insurances.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('members.*', 'insurers.*', 'member-insurances.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-users side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('Members') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    @can('view members')
+                        <a href="{{ route('members.index') }}" class="side-child {{ request()->routeIs('members.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Members') }}</a>
                     @endcan
-                </flux:navlist>
+                    @can('view insurers')
+                        <a href="{{ route('insurers.index') }}" class="side-child {{ request()->routeIs('insurers.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Insurers') }}</a>
+                        <a href="{{ route('member-insurances.index') }}" class="side-child {{ request()->routeIs('member-insurances.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Member Policies') }}</a>
+                    @endcan
+                </div>
+            </details>
+        @endcanany
+
+        @canany(['view membership-packages', 'view subscriptions'])
+            <details class="side-group" @if(request()->routeIs('membership-packages.*', 'subscriptions.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('membership-packages.*', 'subscriptions.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-id-card side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('Memberships') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    @can('view membership-packages')
+                        <a href="{{ route('membership-packages.index') }}" class="side-child {{ request()->routeIs('membership-packages.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Packages') }}</a>
+                    @endcan
+                    @can('view subscriptions')
+                        <a href="{{ route('subscriptions.index') }}" class="side-child {{ request()->routeIs('subscriptions.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Subscriptions') }}</a>
+                    @endcan
+                </div>
+            </details>
+        @endcanany
+
+        @canany(['view classes', 'view class bookings'])
+            <details class="side-group" @if(request()->routeIs('class-types.*', 'class-sessions.*', 'class-bookings.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('class-types.*', 'class-sessions.*', 'class-bookings.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-dumbbell side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('Classes') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    @can('view classes')
+                        <a href="{{ route('class-types.index') }}" class="side-child {{ request()->routeIs('class-types.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Class Types') }}</a>
+                        <a href="{{ route('class-sessions.index') }}" class="side-child {{ request()->routeIs('class-sessions.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Sessions / Schedule') }}</a>
+                    @endcan
+                    @can('view class bookings')
+                        <a href="{{ route('class-bookings.index') }}" class="side-child {{ request()->routeIs('class-bookings.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Bookings') }}</a>
+                    @endcan
+                </div>
+            </details>
+        @endcanany
+
+        @can('view workout plans')
+            <details class="side-group" @if(request()->routeIs('exercises.*', 'workout-plans.*', 'member-workout-plans.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('exercises.*', 'workout-plans.*', 'member-workout-plans.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-fire side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('Training') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    <a href="{{ route('exercises.index') }}" class="side-child {{ request()->routeIs('exercises.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Exercises') }}</a>
+                    <a href="{{ route('workout-plans.index') }}" class="side-child {{ request()->routeIs('workout-plans.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Workout Plans') }}</a>
+                    @can('assign workout plans')
+                        <a href="{{ route('member-workout-plans.index') }}" class="side-child {{ request()->routeIs('member-workout-plans.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Assigned Plans') }}</a>
+                    @endcan
+                </div>
+            </details>
+        @endcan
+
+        @can('view events')
+            <details class="side-group" @if(request()->routeIs('events.*', 'event-registrations.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('events.*', 'event-registrations.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-calendar-check side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('Events') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    <a href="{{ route('events.index') }}" class="side-child {{ request()->routeIs('events.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Events') }}</a>
+                    @can('manage event registrations')
+                        <a href="{{ route('event-registrations.index') }}" class="side-child {{ request()->routeIs('event-registrations.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Registrations') }}</a>
+                    @endcan
+                </div>
+            </details>
+        @endcan
+
+        @canany(['view pos', 'view products', 'view inventory', 'view stock adjustments', 'view purchase orders'])
+            <details class="side-group" @if(request()->routeIs('pos.*', 'pos-sales.*', 'products.*', 'product-categories.*', 'branch-products.*', 'stock-adjustments.*', 'suppliers.*', 'purchase-orders.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('pos.*', 'pos-sales.*', 'products.*', 'product-categories.*', 'branch-products.*', 'stock-adjustments.*', 'suppliers.*', 'purchase-orders.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-cart-shopping side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('POS & Inventory') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    @can('view pos')
+                        <a href="{{ route('pos.index') }}" class="side-child {{ request()->routeIs('pos.index') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Point of Sale') }}</a>
+                        <a href="{{ route('pos-sales.index') }}" class="side-child {{ request()->routeIs('pos-sales.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Sales History') }}</a>
+                    @endcan
+                    @can('view products')
+                        <a href="{{ route('products.index') }}" class="side-child {{ request()->routeIs('products.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Products') }}</a>
+                        <a href="{{ route('product-categories.index') }}" class="side-child {{ request()->routeIs('product-categories.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Categories') }}</a>
+                    @endcan
+                    @can('view inventory')
+                        <a href="{{ route('branch-products.index') }}" class="side-child {{ request()->routeIs('branch-products.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Stock Levels') }}</a>
+                    @endcan
+                    @can('view stock adjustments')
+                        <a href="{{ route('stock-adjustments.index') }}" class="side-child {{ request()->routeIs('stock-adjustments.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Stock Adjustments') }}</a>
+                    @endcan
+                    @can('view purchase orders')
+                        <a href="{{ route('suppliers.index') }}" class="side-child {{ request()->routeIs('suppliers.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Suppliers') }}</a>
+                        <a href="{{ route('purchase-orders.index') }}" class="side-child {{ request()->routeIs('purchase-orders.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Purchase Orders') }}</a>
+                    @endcan
+                </div>
+            </details>
+        @endcanany
+
+        @canany(['view hikvision', 'manage hikvision', 'view attendance', 'view access devices', 'manage access devices', 'manage access identities'])
+            <details class="side-group" @if(request()->routeIs('hikvision.*', 'attendance.*', 'access-control.*', 'access-identities.*', 'access-devices.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('hikvision.*', 'attendance.*', 'access-control.*', 'access-identities.*', 'access-devices.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-fingerprint side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('HIKVision') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    @canany(['view hikvision', 'manage hikvision', 'view attendance', 'view access devices', 'manage access devices'])
+                        <a href="{{ route('hikvision.overview') }}" class="side-child {{ request()->routeIs('hikvision.overview') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Overview') }}</a>
+                        <a href="{{ route('hikvision.logs.index') }}" class="side-child {{ request()->routeIs('hikvision.logs.*', 'attendance.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Logs') }}</a>
+                        <a href="{{ route('hikvision.devices.index') }}" class="side-child {{ request()->routeIs('hikvision.devices.*', 'access-control.devices.*', 'access-devices.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Devices') }}</a>
+                        <a href="{{ route('hikvision.agents.index') }}" class="side-child {{ request()->routeIs('hikvision.agents.*', 'access-control.agents.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Agents') }}</a>
+                        <a href="{{ route('hikvision.enrollments.index') }}" class="side-child {{ request()->routeIs('hikvision.enrollments.*', 'access-control.enrollments.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Enrollments') }}</a>
+                    @endcanany
+                    @canany(['manage access identities', 'manage hikvision', 'manage access devices'])
+                        <a href="{{ route('hikvision.identities.index') }}" class="side-child {{ request()->routeIs('hikvision.identities.*', 'access-identities.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Identities') }}</a>
+                    @endcanany
+                </div>
+            </details>
+        @endcanany
+
+        @canany(['view zkteco', 'manage zkteco', 'manage zkteco settings', 'view access devices', 'manage access devices'])
+            <details class="side-group" @if(request()->routeIs('zkteco.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('zkteco.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-microchip side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('ZKTeco') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    <a href="{{ route('zkteco.overview') }}" class="side-child {{ request()->routeIs('zkteco.overview') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Overview') }}</a>
+                    <a href="{{ route('zkteco.logs.index') }}" class="side-child {{ request()->routeIs('zkteco.logs.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Logs') }}</a>
+                    <a href="{{ route('zkteco.devices.index') }}" class="side-child {{ request()->routeIs('zkteco.devices.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Devices') }}</a>
+                    <a href="{{ route('zkteco.identities.index') }}" class="side-child {{ request()->routeIs('zkteco.identities.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Identities') }}</a>
+                    <a href="{{ route('zkteco.enrollments.index') }}" class="side-child {{ request()->routeIs('zkteco.enrollments.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Enrollments') }}</a>
+                    <a href="{{ route('zkteco.agents.index') }}" class="side-child {{ request()->routeIs('zkteco.agents.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Agent Status') }}</a>
+                    @canany(['manage zkteco settings', 'manage zkteco', 'manage access devices'])
+                        <a href="{{ route('zkteco.settings') }}" class="side-child {{ request()->routeIs('zkteco.settings') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Settings') }}</a>
+                    @endcanany
+                </div>
+            </details>
+        @endcanany
+
+        @can('view equipment')
+            <details class="side-group" @if(request()->routeIs('locations.*', 'equipment.*', 'equipment-allocations.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('locations.*', 'equipment.*', 'equipment-allocations.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-warehouse side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('Facilities') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    <a href="{{ route('locations.index') }}" class="side-child {{ request()->routeIs('locations.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Locations') }}</a>
+                    <a href="{{ route('equipment.index') }}" class="side-child {{ request()->routeIs('equipment.index', 'equipment.create', 'equipment.edit') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Equipment') }}</a>
+                    @can('view equipment allocations')
+                        <a href="{{ route('equipment-allocations.index') }}" class="side-child {{ request()->routeIs('equipment-allocations.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Allocations') }}</a>
+                    @endcan
+                </div>
+            </details>
+        @endcan
+
+        @canany(['view payments', 'view expenses'])
+            <details class="side-group" @if(request()->routeIs('payments.*', 'expenses.*', 'expense-categories.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('payments.*', 'expenses.*', 'expense-categories.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-wallet side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('Finances') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    @can('view payments')
+                        <a href="{{ route('payments.index') }}" class="side-child {{ request()->routeIs('payments.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Payments') }}</a>
+                    @endcan
+                    @can('view expenses')
+                        <a href="{{ route('expenses.index') }}" class="side-child {{ request()->routeIs('expenses.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Expenses') }}</a>
+                        <a href="{{ route('expense-categories.index') }}" class="side-child {{ request()->routeIs('expense-categories.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Expense Categories') }}</a>
+                    @endcan
+                </div>
+            </details>
+        @endcanany
+
+        @canany(['view reports', 'view financial reports', 'view attendance reports', 'view membership reports', 'view insurance reports', 'view pos reports'])
+            <details class="side-group" @if(request()->routeIs('reports.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('reports.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-chart-line side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('Reports') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    @can('view financial reports')
+                        <a href="{{ route('reports.revenue') }}" class="side-child {{ request()->routeIs('reports.revenue') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Revenue') }}</a>
+                    @endcan
+                    @can('view membership reports')
+                        <a href="{{ route('reports.memberships') }}" class="side-child {{ request()->routeIs('reports.memberships') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Memberships') }}</a>
+                    @endcan
+                    @can('view attendance reports')
+                        <a href="{{ route('reports.attendance') }}" class="side-child {{ request()->routeIs('reports.attendance') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Attendance') }}</a>
+                    @endcan
+                    @can('view insurance reports')
+                        <a href="{{ route('reports.insurance') }}" class="side-child {{ request()->routeIs('reports.insurance') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Insurance') }}</a>
+                    @endcan
+                    @can('view pos reports')
+                        <a href="{{ route('reports.pos') }}" class="side-child {{ request()->routeIs('reports.pos') ? 'side-child-active' : '' }}" wire:navigate>{{ __('POS / Sales') }}</a>
+                    @endcan
+                </div>
+            </details>
+        @endcanany
+
+        @can('view settings')
+            <a href="{{ route('settings.general') }}" class="side-parent {{ request()->routeIs('settings.*') ? 'side-parent-active' : '' }} mt-2" wire:navigate>
+                <span class="side-parent-left">
+                    <i class="fa-sharp-duotone fa-solid fa-gear side-icon" aria-hidden="true"></i>
+                    <span class="side-parent-label">{{ __('Settings') }}</span>
+                </span>
+            </a>
+        @endcan
+    </div>
+</nav>
             </div>
         </flux:sidebar>
 
@@ -445,3 +613,4 @@
         @stack('scripts')
     </body>
 </html>
+

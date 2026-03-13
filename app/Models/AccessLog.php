@@ -20,6 +20,8 @@ class AccessLog extends Model
 
     protected $fillable = [
         'branch_id',
+        'integration_type',
+        'provider',
         'access_control_device_id',
         'access_identity_id',
         'device_event_uid',
@@ -36,6 +38,8 @@ class AccessLog extends Model
             'event_timestamp' => 'datetime',
             'raw_payload' => 'array',
             'device_event_uid' => 'string',
+            'integration_type' => 'string',
+            'provider' => 'string',
         ];
     }
 
@@ -70,6 +74,16 @@ class AccessLog extends Model
         return $query->where('direction', self::DIRECTION_OUT);
     }
 
+    public function scopeForIntegration($query, string $integration_type)
+    {
+        return $query->where('integration_type', $integration_type);
+    }
+
+    public function scopeForProvider($query, string $provider)
+    {
+        return $query->where('provider', $provider);
+    }
+
     // -------------------------------------------------------------------------
     // Relationships
     // -------------------------------------------------------------------------
@@ -100,4 +114,3 @@ class AccessLog extends Model
         return $this->belongsTo(User::class, 'subject_id');
     }
 }
-

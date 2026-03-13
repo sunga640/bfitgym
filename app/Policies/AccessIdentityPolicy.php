@@ -3,8 +3,10 @@
 namespace App\Policies;
 
 use App\Models\AccessIdentity;
+use App\Models\AccessControlDevice;
 use App\Models\User;
 use App\Services\BranchContext;
+use App\Support\Integrations\IntegrationPermission;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class AccessIdentityPolicy
@@ -13,29 +15,31 @@ class AccessIdentityPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyPermission(['view access devices', 'manage access identities']);
+        return IntegrationPermission::canView($user, AccessControlDevice::INTEGRATION_HIKVISION)
+            || IntegrationPermission::canView($user, AccessControlDevice::INTEGRATION_ZKTECO);
     }
 
     public function view(User $user, AccessIdentity $identity): bool
     {
-        return $user->hasAnyPermission(['view access devices', 'manage access identities'])
+        return IntegrationPermission::canView($user, $identity->integration_type)
             && $this->belongsToUserBranch($user, $identity);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('manage access identities');
+        return IntegrationPermission::canManage($user, AccessControlDevice::INTEGRATION_HIKVISION)
+            || IntegrationPermission::canManage($user, AccessControlDevice::INTEGRATION_ZKTECO);
     }
 
     public function update(User $user, AccessIdentity $identity): bool
     {
-        return $user->hasPermissionTo('manage access identities')
+        return IntegrationPermission::canManage($user, $identity->integration_type)
             && $this->belongsToUserBranch($user, $identity);
     }
 
     public function delete(User $user, AccessIdentity $identity): bool
     {
-        return $user->hasPermissionTo('manage access identities')
+        return IntegrationPermission::canManage($user, $identity->integration_type)
             && $this->belongsToUserBranch($user, $identity);
     }
 
@@ -58,4 +62,3 @@ class AccessIdentityPolicy
         return false;
     }
 }
-

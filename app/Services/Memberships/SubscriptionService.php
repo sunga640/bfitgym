@@ -121,6 +121,67 @@ class SubscriptionService
     }
 
     /**
+     * Update an existing subscription cycle and its latest payment details.
+     */
+    public function updateSubscription(MemberSubscription $subscription, MembershipPackage $package, array $payload): MemberSubscription
+    {
+        $member = $subscription->member()->firstOrFail();
+        $is_changing_package = $subscription->membership_package_id !== $package->id;
+
+        if ($is_changing_package) {
+            $this->guardActivePackage($package);
+        }
+
+        return DB::transaction(function () use ($subscription, $package, $payload, $member) {
+            $start_date = Carbon::parse($payload['start_date'])->startOfDay();
+            $end_date = $this->calculateEndDate($start_date, $package);
+
+            $status = $subscription->status;
+            if (in_array($subscription->status, ['pending', 'active'], true)) {
+                $status = $start_date->isFuture() ? 'pending' : 'active';
+            }
+
+            $subscription->update([
+                'membership_package_id' => $package->id,
+                'start_date' => $start_date,
+                'end_date' => $end_date,
+                'status' => $status,
+                'auto_renew' => (bool) ($payload['auto_renew'] ?? false),
+                'notes' => $payload['notes'] ?? null,
+            ]);
+
+            $payment_data = [
+                'amount' => $payload['amount'],
+                'currency' => strtoupper($payload['currency']),
+                'payment_method' => $payload['payment_method'],
+                'reference' => $payload['reference'] ?? null,
+                'paid_at' => Carbon::parse($payload['paid_at']),
+                'notes' => $payload['notes'] ?? null,
+            ];
+
+            $latest_payment = $subscription->paymentTransactions()->latest('paid_at')->first();
+
+            if ($latest_payment) {
+                $latest_payment->update($payment_data);
+            } else {
+                $this->payment_service->recordMembershipPayment($member, $subscription, $payload);
+            }
+
+            Log::info('Member subscription updated', [
+                'subscription_id' => $subscription->id,
+                'member_id' => $member->id,
+                'branch_id' => $member->branch_id,
+                'package_id' => $package->id,
+                'user_id' => auth()->id(),
+            ]);
+
+            $this->updateFingerprintValidityIfActive($member);
+
+            return $subscription->fresh(['member', 'membershipPackage', 'latestPayment']);
+        });
+    }
+
+    /**
      * Calculate the subscription end date based on the package duration.
      */
     public function calculateEndDate(Carbon $start_date, MembershipPackage $package): Carbon
@@ -217,5 +278,4 @@ class SubscriptionService
         }
     }
 }
-
 

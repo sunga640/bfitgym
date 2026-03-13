@@ -39,6 +39,7 @@ class AgentCommandsController extends Controller
         $peek = $this->isPeekRequest($request);
 
         $device_ids = $this->getAgentDeviceIds($agent);
+        $provider_filters = $agent->providerList();
 
         $access_logger = app(AccessLogger::class);
 
@@ -64,7 +65,7 @@ class AgentCommandsController extends Controller
 
         // Peek mode: return commands without claiming or modifying anything
         if ($peek) {
-            $commands = $this->peekCommands($agent, $device_ids, $limit);
+            $commands = $this->peekCommands($agent, $device_ids, $provider_filters, $limit);
 
             $access_logger->info('agent_commands_polled', [
                 'agent_uuid' => $agent->uuid,
@@ -83,7 +84,7 @@ class AgentCommandsController extends Controller
         }
 
         // Normal mode: resume claimed commands, or claim new pending commands (with stale release)
-        $result = DB::transaction(function () use ($agent, $device_ids, $limit, $access_logger) {
+        $result = DB::transaction(function () use ($agent, $device_ids, $provider_filters, $limit, $access_logger) {
             $now = now();
 
             // Step 1: Release stale claims (configurable TTL, default 2 minutes)
@@ -100,6 +101,7 @@ class AgentCommandsController extends Controller
                 $stale_commands = AccessControlDeviceCommand::query()
                     ->where('branch_id', $agent->branch_id)
                     ->whereIn('access_control_device_id', $device_ids)
+                    ->whereIn('provider', $provider_filters)
                     ->where('status', AccessControlDeviceCommand::STATUS_CLAIMED)
                     ->whereNull('finished_at')
                     ->where('claimed_at', '<', $stale_threshold)
@@ -169,6 +171,7 @@ class AgentCommandsController extends Controller
             $resumed = AccessControlDeviceCommand::query()
                 ->where('branch_id', $agent->branch_id)
                 ->whereIn('access_control_device_id', $device_ids)
+                ->whereIn('provider', $provider_filters)
                 ->where('claimed_by_agent_id', $agent->id)
                 ->whereIn('status', [
                     AccessControlDeviceCommand::STATUS_CLAIMED,
@@ -211,6 +214,7 @@ class AgentCommandsController extends Controller
                 $candidates = AccessControlDeviceCommand::query()
                     ->where('branch_id', $agent->branch_id)
                     ->whereIn('access_control_device_id', $device_ids)
+                    ->whereIn('provider', $provider_filters)
                     ->where('status', AccessControlDeviceCommand::STATUS_PENDING)
                     ->whereNull('claimed_by_agent_id')
                     ->whereNull('finished_at') // Safety: never return finished commands
@@ -312,13 +316,14 @@ class AgentCommandsController extends Controller
      * - pending (available now)
      * - claimed by this agent (available now) to support resume visibility
      */
-    private function peekCommands(AccessControlAgent $agent, $device_ids, int $limit)
+    private function peekCommands(AccessControlAgent $agent, $device_ids, array $provider_filters, int $limit)
     {
         $now = now();
 
         $pending = AccessControlDeviceCommand::query()
             ->where('branch_id', $agent->branch_id)
             ->whereIn('access_control_device_id', $device_ids)
+            ->whereIn('provider', $provider_filters)
             ->where('status', AccessControlDeviceCommand::STATUS_PENDING)
             ->whereNull('finished_at') // Safety: never return finished commands
             ->whereColumn('attempts', '<', 'max_attempts')
@@ -334,6 +339,7 @@ class AgentCommandsController extends Controller
         $claimed = AccessControlDeviceCommand::query()
             ->where('branch_id', $agent->branch_id)
             ->whereIn('access_control_device_id', $device_ids)
+            ->whereIn('provider', $provider_filters)
             ->where('status', AccessControlDeviceCommand::STATUS_CLAIMED)
             ->where('claimed_by_agent_id', $agent->id)
             ->whereNull('finished_at') // Safety: never return finished commands
@@ -377,6 +383,8 @@ class AgentCommandsController extends Controller
         return [
             'id' => $cmd->id,
             'branch_id' => $cmd->branch_id,
+            'integration_type' => $cmd->integration_type,
+            'provider' => $cmd->provider,
             'device_id' => $cmd->access_control_device_id,
             'type' => $cmd->type,
             'payload' => $cmd->payload,

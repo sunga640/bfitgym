@@ -191,6 +191,16 @@
                 @endif
 
                 {{-- Other Actions --}}
+                @if($this->canUpdateStatus)
+                    <flux:button
+                        variant="ghost"
+                        href="{{ route('subscriptions.edit', $subscription) }}"
+                        wire:navigate
+                        class="w-full justify-center"
+                    >
+                        {{ __('Edit subscription') }}
+                    </flux:button>
+                @endif
                 @if($this->canRenew)
                     <flux:button
                         variant="primary"

@@ -154,6 +154,16 @@
                                 >
                                     {{ __('View') }}
                                 </flux:button>
+                                @can('update', $subscription)
+                                    <flux:button
+                                        variant="ghost"
+                                        size="sm"
+                                        href="{{ route('subscriptions.edit', $subscription) }}"
+                                        wire:navigate
+                                    >
+                                        {{ __('Edit') }}
+                                    </flux:button>
+                                @endcan
                                 @if($subscription->end_date->isPast() || $subscription->end_date->isToday())
                                     <flux:button
                                         variant="ghost"
@@ -195,4 +205,3 @@
         @endif
     </div>
 </div>
-

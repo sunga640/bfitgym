@@ -4,11 +4,8 @@ namespace App\Http\Controllers\Api\Agent;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Agent\RegisterAgentRequest;
-use App\Models\AccessControlAgent;
-use App\Models\AccessControlAgentEnrollment;
 use App\Models\AccessControlDevice;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use App\Services\AccessControl\AgentEnrollmentService;
 
 class AgentRegisterController extends Controller
 {
@@ -19,60 +16,48 @@ class AgentRegisterController extends Controller
     {
         $data = $request->validated();
 
-        $enrollment = AccessControlAgentEnrollment::query()
-            ->where('code', $data['enrollment_code'])
-            ->first();
+        $enrollment_service = app(AgentEnrollmentService::class);
+        $enrollment = $enrollment_service->findUsableEnrollmentByCode($data['enrollment_code']);
 
         if (!$enrollment) {
             return response()->json(['message' => 'Invalid enrollment code.'], 422);
         }
 
-        if ($enrollment->used_at !== null) {
-            return response()->json(['message' => 'Enrollment code already used.'], 422);
-        }
+        $result = $enrollment_service->completeEnrollment(
+            enrollment: $enrollment,
+            agent_name: $data['name'],
+            os: $data['os'],
+            app_version: $data['app_version'] ?? null,
+        );
 
-        if ($enrollment->expires_at->isPast()) {
-            return response()->json(['message' => 'Enrollment code expired.'], 422);
-        }
+        $agent = $result['agent'];
+        $plaintext_token = $result['token'];
 
-        [$agent, $plaintext_token] = DB::transaction(function () use ($data, $enrollment) {
-            $plaintext_token = Str::random(64);
-
-            $agent = AccessControlAgent::create([
-                'branch_id' => $enrollment->branch_id,
-                'uuid' => (string) Str::uuid(),
-                'name' => $data['name'],
-                'os' => $data['os'],
-                'app_version' => $data['app_version'] ?? null,
-                'status' => AccessControlAgent::STATUS_ACTIVE,
-                'secret_hash' => hash('sha256', $plaintext_token),
-                'last_seen_at' => now(),
-                'last_ip' => request()->ip(),
-                'last_error' => null,
-            ]);
-
-            $enrollment->update([
-                'used_at' => now(),
-                'used_by_agent_id' => $agent->id,
-            ]);
-
-            return [$agent, $plaintext_token];
-        });
+        $agent->update([
+            'last_ip' => $request->ip(),
+            'last_error' => null,
+        ]);
 
         $devices = AccessControlDevice::query()
             ->where('branch_id', $agent->branch_id)
+            ->forIntegration($enrollment->integration_type ?? AccessControlDevice::INTEGRATION_HIKVISION)
+            ->when($enrollment->provider, fn($q) => $q->forProvider($enrollment->provider))
             ->get([
                 'id',
                 'name',
                 'serial_number',
                 'device_model',
                 'device_type',
+                'integration_type',
+                'provider',
                 'branch_id',
             ]);
 
         return response()->json([
             'agent_uuid' => $agent->uuid,
             'agent_token' => $plaintext_token, // view-once
+            'integration_type' => $enrollment->integration_type ?? AccessControlDevice::INTEGRATION_HIKVISION,
+            'provider' => $enrollment->provider ?? AccessControlDevice::PROVIDER_HIKVISION_AGENT,
             'devices' => $devices,
             'server_time' => now()->toIso8601String(),
         ]);

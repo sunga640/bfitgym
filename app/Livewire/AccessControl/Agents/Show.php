@@ -7,7 +7,7 @@ use App\Models\AccessControlAgentEnrollment;
 use App\Models\AccessControlDevice;
 use App\Models\AccessControlDeviceCommand;
 use App\Services\AccessControl\AgentDeviceAssignmentService;
-use App\Services\BranchContext;
+use App\Support\Integrations\IntegrationPermission;
 use App\Support\AccessLogger;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
@@ -20,6 +20,11 @@ use Livewire\WithPagination;
 class Show extends Component
 {
     use WithPagination;
+
+    public string $integration_type = AccessControlDevice::INTEGRATION_HIKVISION;
+    public string $provider_filter = AccessControlDevice::PROVIDER_HIKVISION_AGENT;
+    public string $integration_label = 'HIKVision';
+    public string $route_base = 'hikvision';
 
     public AccessControlAgent $agent;
 
@@ -35,6 +40,14 @@ class Show extends Component
 
     public function mount(AccessControlAgent $agent): void
     {
+        if (!IntegrationPermission::canView(auth()->user(), $this->integration_type)) {
+            abort(403);
+        }
+
+        if (!$this->supportsCurrentProvider($agent)) {
+            abort(404);
+        }
+
         $this->authorize('view', $agent);
         $this->agent = $agent;
     }
@@ -174,7 +187,7 @@ class Show extends Component
         ]);
 
         session()->flash('success', __('Agent deleted successfully.'));
-        $this->redirect(route('access-control.agents.index'), navigate: true);
+        $this->redirect(route($this->route_base . '.agents.index'), navigate: true);
     }
 
     // -------------------------------------------------------------------------
@@ -183,17 +196,19 @@ class Show extends Component
 
     public function render(): View
     {
-        $branch_id = app(BranchContext::class)->getCurrentBranchId();
-
         // Available devices for assignment
         $available_devices = AccessControlDevice::query()
             ->where('branch_id', $this->agent->branch_id)
+            ->forIntegration($this->integration_type)
+            ->when($this->provider_filter, fn($q) => $q->forProvider($this->provider_filter))
             ->where('status', AccessControlDevice::STATUS_ACTIVE)
             ->orderBy('name')
             ->get();
 
         // Recent enrollments for this agent
         $enrollments = AccessControlAgentEnrollment::query()
+            ->forIntegration($this->integration_type)
+            ->forProvider($this->provider_filter)
             ->where(function ($q) {
                 $q->where('access_control_agent_id', $this->agent->id)
                     ->orWhere('used_by_agent_id', $this->agent->id);
@@ -206,6 +221,8 @@ class Show extends Component
         // Recent commands claimed by this agent
         $recent_commands = AccessControlDeviceCommand::query()
             ->where('claimed_by_agent_id', $this->agent->id)
+            ->forIntegration($this->integration_type)
+            ->forProvider($this->provider_filter)
             ->with('device')
             ->latest()
             ->take(50)
@@ -224,6 +241,19 @@ class Show extends Component
             'enrollments' => $enrollments,
             'recent_commands' => $recent_commands,
             'command_stats' => $command_stats,
+            'integration_label' => $this->integration_label,
+            'route_base' => $this->route_base,
         ]);
+    }
+
+    protected function supportsCurrentProvider(AccessControlAgent $agent): bool
+    {
+        if ($this->provider_filter === AccessControlDevice::PROVIDER_HIKVISION_AGENT) {
+            if (empty($agent->supported_providers)) {
+                return true;
+            }
+        }
+
+        return $agent->supportsProvider($this->provider_filter);
     }
 }

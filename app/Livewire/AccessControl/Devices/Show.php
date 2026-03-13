@@ -6,7 +6,7 @@ use App\Models\AccessControlAgent;
 use App\Models\AccessControlDevice;
 use App\Models\AccessControlDeviceCommand;
 use App\Services\AccessControl\AgentDeviceAssignmentService;
-use App\Services\BranchContext;
+use App\Support\Integrations\IntegrationPermission;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -18,6 +18,11 @@ use Livewire\WithPagination;
 class Show extends Component
 {
     use WithPagination;
+
+    public string $integration_type = AccessControlDevice::INTEGRATION_HIKVISION;
+    public string $integration_label = 'HIKVision';
+    public string $route_prefix = 'hikvision.devices';
+    public string $route_base = 'hikvision';
 
     public AccessControlDevice $device;
 
@@ -31,6 +36,14 @@ class Show extends Component
 
     public function mount(AccessControlDevice $device): void
     {
+        if ($device->integration_type !== $this->integration_type) {
+            abort(404);
+        }
+
+        if (!IntegrationPermission::canView(auth()->user(), $this->integration_type)) {
+            abort(403);
+        }
+
         $this->authorize('view', $device);
         $this->device = $device;
     }
@@ -135,11 +148,17 @@ class Show extends Component
 
     public function render(): View
     {
-        $branch_id = app(BranchContext::class)->getCurrentBranchId();
-
         // Available agents for assignment
         $available_agents = AccessControlAgent::query()
             ->where('branch_id', $this->device->branch_id)
+            ->when(
+                $this->integration_type === AccessControlDevice::INTEGRATION_ZKTECO,
+                fn($q) => $q->whereJsonContains('supported_providers', AccessControlDevice::PROVIDER_ZKTECO_AGENT),
+                fn($q) => $q->where(function ($inner) {
+                    $inner->whereNull('supported_providers')
+                        ->orWhereJsonContains('supported_providers', AccessControlDevice::PROVIDER_HIKVISION_AGENT);
+                }),
+            )
             ->where('status', AccessControlAgent::STATUS_ACTIVE)
             ->orderBy('name')
             ->get();
@@ -155,6 +174,9 @@ class Show extends Component
         return view('livewire.access-control.devices.show', [
             'available_agents' => $available_agents,
             'recent_commands' => $recent_commands,
+            'integration_label' => $this->integration_label,
+            'route_prefix' => $this->route_prefix,
+            'route_base' => $this->route_base,
         ]);
     }
 }

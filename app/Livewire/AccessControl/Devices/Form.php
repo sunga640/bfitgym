@@ -6,6 +6,7 @@ use App\Models\AccessControlDevice;
 use App\Models\Branch;
 use App\Models\Location;
 use App\Services\BranchContext;
+use App\Support\Integrations\IntegrationPermission;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,11 @@ use Livewire\Component;
 #[Layout('components.layouts.app')]
 class Form extends Component
 {
+    public string $integration_type = AccessControlDevice::INTEGRATION_HIKVISION;
+    public string $integration_label = 'HIKVision';
+    public string $route_prefix = 'hikvision.devices';
+    public string $route_base = 'hikvision';
+
     public ?AccessControlDevice $device = null;
     public bool $is_editing = false;
 
@@ -29,6 +35,7 @@ class Form extends Component
     public string $name = '';
     public string $device_model = AccessControlDevice::MODEL_DS_K1T808MFWX;
     public string $device_type = AccessControlDevice::TYPE_ENTRY;
+    public string $provider = AccessControlDevice::PROVIDER_HIKVISION_AGENT;
     public string $serial_number = '';
     public ?int $location_id = null;
     public string $status = AccessControlDevice::STATUS_ACTIVE;
@@ -53,14 +60,24 @@ class Form extends Component
 
     public function mount(?AccessControlDevice $device = null): void
     {
+        if (!IntegrationPermission::canManage(auth()->user(), $this->integration_type)) {
+            abort(403);
+        }
+
         $this->device = $device;
         $this->is_editing = $device && $device->exists;
 
         if ($this->is_editing) {
+            if ($device->integration_type !== $this->integration_type) {
+                abort(404);
+            }
+
             $this->authorize('update', $device);
 
             $this->fill(Arr::only($device->toArray(), [
                 'branch_id',
+                'integration_type',
+                'provider',
                 'name',
                 'device_model',
                 'device_type',
@@ -79,6 +96,7 @@ class Form extends Component
             $this->notes = $device->notes ?? '';
         } else {
             $this->authorize('create', AccessControlDevice::class);
+            $this->provider = $this->defaultProviderForIntegration();
             $this->updateCapabilities();
         }
 
@@ -103,8 +121,19 @@ class Form extends Component
 
     protected function rules(): array
     {
+        $ip_rules = ['nullable', 'ip'];
+        $username_rules = ['nullable', 'string', 'max:100'];
+        $password_rules = ['nullable', 'string', 'max:255'];
+
+        if ($this->requiresDeviceCredentials()) {
+            $ip_rules = ['required', 'ip'];
+            $username_rules = ['required', 'string', 'max:100'];
+            $password_rules = [$this->is_editing ? 'nullable' : 'required', 'string', 'max:255'];
+        }
+
         return [
             'branch_id' => ['required', 'exists:branches,id'],
+            'provider' => ['required', Rule::in(AccessControlDevice::providersForIntegration($this->integration_type))],
             'name' => ['required', 'string', 'max:150'],
             'device_model' => ['required', 'string', 'max:100'],
             'device_type' => ['required', Rule::in(['entry', 'exit', 'bidirectional'])],
@@ -116,10 +145,10 @@ class Form extends Component
             ],
             'location_id' => ['nullable', 'exists:locations,id'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-            'ip_address' => ['required', 'ip'],
+            'ip_address' => $ip_rules,
             'port' => ['required', 'integer', 'min:1', 'max:65535'],
-            'username' => ['required', 'string', 'max:100'],
-            'password' => [$this->is_editing ? 'nullable' : 'required', 'string', 'max:255'],
+            'username' => $username_rules,
+            'password' => $password_rules,
             'supports_face_recognition' => ['boolean'],
             'supports_fingerprint' => ['boolean'],
             'supports_card' => ['boolean'],
@@ -146,6 +175,11 @@ class Form extends Component
         $this->updateCapabilities();
     }
 
+    public function updatedProvider(): void
+    {
+        $this->resetErrorBag(['ip_address', 'username', 'password']);
+    }
+
     protected function updateCapabilities(): void
     {
         $capabilities = AccessControlDevice::defaultCapabilities($this->device_model);
@@ -170,6 +204,8 @@ class Form extends Component
         try {
             $device_data = [
                 'branch_id' => $data['branch_id'],
+                'integration_type' => $this->integration_type,
+                'provider' => $data['provider'],
                 'name' => $data['name'],
                 'device_model' => $data['device_model'],
                 'device_type' => $data['device_type'],
@@ -202,7 +238,7 @@ class Form extends Component
 
             DB::commit();
             session()->flash('success', $message);
-            $this->redirect(route('access-control.devices.index'), navigate: true);
+            $this->redirect(route($this->route_prefix . '.index'), navigate: true);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to save access control device', [
@@ -237,6 +273,47 @@ class Form extends Component
             'locations' => $locations,
             'device_models' => $device_models,
             'device_types' => $device_types,
+            'provider_options' => $this->providerOptions(),
+            'integration_label' => $this->integration_label,
+            'route_prefix' => $this->route_prefix,
+            'route_base' => $this->route_base,
+            'show_provider_selector' => $this->integration_type === AccessControlDevice::INTEGRATION_ZKTECO,
+            'requires_credentials' => $this->requiresDeviceCredentials(),
         ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function providerOptions(): array
+    {
+        if ($this->integration_type === AccessControlDevice::INTEGRATION_ZKTECO) {
+            return [
+                AccessControlDevice::PROVIDER_ZKBIO_PLATFORM => __('ZKBio Platform (Preferred)'),
+                AccessControlDevice::PROVIDER_ZKTECO_AGENT => __('Local Agent (Fallback)'),
+            ];
+        }
+
+        return [
+            AccessControlDevice::PROVIDER_HIKVISION_AGENT => __('Local Agent'),
+        ];
+    }
+
+    protected function defaultProviderForIntegration(): string
+    {
+        if ($this->integration_type === AccessControlDevice::INTEGRATION_ZKTECO) {
+            return AccessControlDevice::PROVIDER_ZKBIO_PLATFORM;
+        }
+
+        return AccessControlDevice::PROVIDER_HIKVISION_AGENT;
+    }
+
+    protected function requiresDeviceCredentials(): bool
+    {
+        if ($this->integration_type === AccessControlDevice::INTEGRATION_HIKVISION) {
+            return true;
+        }
+
+        return $this->provider === AccessControlDevice::PROVIDER_ZKTECO_AGENT;
     }
 }

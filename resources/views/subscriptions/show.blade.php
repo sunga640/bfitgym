@@ -9,14 +9,26 @@
         <x-breadcrumb-item :current="true">{{ $subscription->member->full_name }}</x-breadcrumb-item>
     </x-slot:breadcrumbs>
 
-    @if($subscription->end_date->isPast() || $subscription->end_date->isToday())
+    @php
+        $can_edit = auth()->user()?->can('update', $subscription) ?? false;
+        $can_renew = ($subscription->end_date->isPast() || $subscription->end_date->isToday())
+            && (auth()->user()?->can('renew', $subscription) ?? false);
+    @endphp
+
+    @if($can_edit || $can_renew)
         <x-slot:actions>
-            <flux:button variant="ghost" href="{{ route('subscriptions.renew', $subscription) }}" wire:navigate icon="arrow-path">
-                {{ __('Renew') }}
-            </flux:button>
+            @if($can_edit)
+                <flux:button variant="ghost" href="{{ route('subscriptions.edit', $subscription) }}" wire:navigate>
+                    {{ __('Edit') }}
+                </flux:button>
+            @endif
+            @if($can_renew)
+                <flux:button variant="ghost" href="{{ route('subscriptions.renew', $subscription) }}" wire:navigate icon="arrow-path">
+                    {{ __('Renew') }}
+                </flux:button>
+            @endif
         </x-slot:actions>
     @endif
 
     <livewire:subscriptions.show :subscription="$subscription" />
 </x-layouts.app>
-

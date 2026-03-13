@@ -192,6 +192,14 @@ class Branch extends Model
     }
 
     /**
+     * Get integration-level access control configuration records.
+     */
+    public function accessIntegrationConfigs(): HasMany
+    {
+        return $this->hasMany(AccessIntegrationConfig::class);
+    }
+
+    /**
      * Get all expense categories for this branch.
      */
     public function expenseCategories(): HasMany

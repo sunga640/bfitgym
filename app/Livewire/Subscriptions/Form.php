@@ -18,6 +18,7 @@ class Form extends Component
     public ?MemberSubscription $subscription = null;
 
     public bool $is_renewal = false;
+    public bool $is_editing = false;
 
     public ?int $member_id = null;
     public ?int $membership_package_id = null;
@@ -40,20 +41,42 @@ class Form extends Component
         $this->currency = app_currency();
         $this->paid_at = now()->format('Y-m-d\TH:i');
 
-        if ($subscription && $subscription->exists && $isRenewal) {
-            $this->authorize('renew', $subscription);
+        if ($subscription && $subscription->exists) {
+            $subscription->loadMissing(['membershipPackage', 'latestPayment']);
 
-            $this->member_id = $subscription->member_id;
-            $this->membership_package_id = $subscription->membership_package_id;
-            $this->start_date = $subscription->end_date->copy()->addDay()->format('Y-m-d');
-            $this->auto_renew = $subscription->auto_renew;
-            $this->amount = (string) $subscription->membershipPackage->price;
+            if ($isRenewal) {
+                $this->authorize('renew', $subscription);
+
+                $this->member_id = $subscription->member_id;
+                $this->membership_package_id = $subscription->membership_package_id;
+                $this->start_date = $subscription->end_date->copy()->addDay()->format('Y-m-d');
+                $this->auto_renew = $subscription->auto_renew;
+                $this->amount = (string) $subscription->membershipPackage->price;
+            } else {
+                $this->authorize('update', $subscription);
+
+                $this->is_editing = true;
+                $latest_payment = $subscription->latestPayment;
+
+                $this->member_id = $subscription->member_id;
+                $this->membership_package_id = $subscription->membership_package_id;
+                $this->start_date = $subscription->start_date->format('Y-m-d');
+                $this->auto_renew = $subscription->auto_renew;
+                $this->notes = $subscription->notes ?? '';
+                $this->amount = $latest_payment ? (string) $latest_payment->amount : (string) $subscription->membershipPackage->price;
+                $this->currency = $latest_payment?->currency ?? app_currency();
+                $this->payment_method = $latest_payment?->payment_method ?? 'cash';
+                $this->reference = $latest_payment?->reference ?? '';
+                $this->paid_at = ($latest_payment?->paid_at ?? now())->format('Y-m-d\TH:i');
+            }
         } else {
             $this->authorize('create', MemberSubscription::class);
             $this->start_date = now()->format('Y-m-d');
         }
 
-        $this->syncAmountFromPackage();
+        if (!$this->is_editing) {
+            $this->syncAmountFromPackage();
+        }
         $this->syncEndDate();
     }
 
@@ -88,7 +111,6 @@ class Form extends Component
     {
         $validated = $this->validate();
 
-        $member = Member::query()->findOrFail($validated['member_id']);
         $package = MembershipPackage::query()->findOrFail($validated['membership_package_id']);
 
         $payload = [
@@ -107,14 +129,18 @@ class Form extends Component
             $service = app(SubscriptionService::class);
 
             if ($this->is_renewal && $this->subscription) {
-                $new_subscription = $service->renewSubscription($this->subscription, $package, $payload);
+                $target_subscription = $service->renewSubscription($this->subscription, $package, $payload);
                 session()->flash('success', __('Subscription renewed successfully.'));
+            } elseif ($this->is_editing && $this->subscription) {
+                $target_subscription = $service->updateSubscription($this->subscription, $package, $payload);
+                session()->flash('success', __('Subscription updated successfully.'));
             } else {
-                $new_subscription = $service->startSubscription($member, $package, $payload);
+                $member = Member::query()->findOrFail($validated['member_id']);
+                $target_subscription = $service->startSubscription($member, $package, $payload);
                 session()->flash('success', __('Subscription created successfully.'));
             }
 
-            $this->redirect(route('subscriptions.show', $new_subscription), navigate: true);
+            $this->redirect(route('subscriptions.show', $target_subscription), navigate: true);
         } catch (RuntimeException $exception) {
             $this->addError('form', $exception->getMessage());
         } catch (Throwable $throwable) {
@@ -134,9 +160,21 @@ class Form extends Component
 
     public function render(): View
     {
+        $packages_query = MembershipPackage::query();
+        $current_package_id = $this->subscription?->membership_package_id;
+
+        if ($this->is_editing && $current_package_id) {
+            $packages_query->where(function ($query) use ($current_package_id) {
+                $query->where('status', 'active')
+                    ->orWhere('id', $current_package_id);
+            });
+        } else {
+            $packages_query->where('status', 'active');
+        }
+
         return view('livewire.subscriptions.form', [
             'members' => Member::query()->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'member_no']),
-            'packages' => MembershipPackage::query()->active()->orderBy('name')->get(['id', 'name', 'price', 'duration_type', 'duration_value']),
+            'packages' => $packages_query->orderBy('name')->get(['id', 'name', 'price', 'duration_type', 'duration_value', 'status']),
         ]);
     }
 
@@ -166,5 +204,4 @@ class Form extends Component
         $this->end_date = $end->format('Y-m-d');
     }
 }
-
 

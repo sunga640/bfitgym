@@ -11,7 +11,7 @@ use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 
 beforeEach(function () {
-    foreach (['view subscriptions', 'create subscriptions', 'renew subscriptions'] as $permission_name) {
+    foreach (['view subscriptions', 'create subscriptions', 'edit subscriptions', 'renew subscriptions', 'switch branches'] as $permission_name) {
         Permission::firstOrCreate(['name' => $permission_name, 'guard_name' => 'web']);
     }
 
@@ -20,7 +20,7 @@ beforeEach(function () {
     $this->user = User::factory()->create([
         'branch_id' => $this->branch->id,
     ]);
-    $this->user->givePermissionTo(['view subscriptions', 'create subscriptions', 'renew subscriptions']);
+    $this->user->givePermissionTo(['view subscriptions', 'create subscriptions', 'edit subscriptions', 'renew subscriptions', 'switch branches']);
 
     $this->member = Member::factory()->create([
         'branch_id' => $this->branch->id,
@@ -97,3 +97,48 @@ it('renews an existing subscription and links it to previous cycle', function ()
     expect($new_subscription->paymentTransactions)->toHaveCount(1);
 });
 
+it('edits an existing subscription without creating a new cycle', function () {
+    $this->actingAs($this->user);
+
+    /** @var SubscriptionService $service */
+    $service = app(SubscriptionService::class);
+
+    $existing = $service->startSubscription($this->member, $this->package, [
+        'start_date' => now()->subDays(10)->format('Y-m-d'),
+        'auto_renew' => false,
+        'notes' => 'Initial note',
+        'amount' => 100000,
+        'currency' => 'TZS',
+        'payment_method' => 'cash',
+        'reference' => 'INV-EDIT-001',
+        'paid_at' => now()->subDays(10)->format('Y-m-d\TH:i'),
+    ]);
+
+    $new_start_date = now()->subDays(5)->format('Y-m-d');
+
+    Livewire::test(SubscriptionForm::class, [
+        'subscription' => $existing,
+    ])
+        ->set('start_date', $new_start_date)
+        ->set('auto_renew', true)
+        ->set('notes', 'Updated note')
+        ->set('amount', '120000')
+        ->set('currency', 'TZS')
+        ->set('payment_method', 'card')
+        ->set('reference', 'INV-EDIT-002')
+        ->set('paid_at', now()->format('Y-m-d\TH:i'))
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('subscriptions.show', $existing));
+
+    $existing->refresh();
+
+    expect(MemberSubscription::count())->toBe(1);
+    expect($existing->start_date->toDateString())->toBe($new_start_date);
+    expect($existing->auto_renew)->toBeTrue();
+    expect($existing->notes)->toBe('Updated note');
+    expect($existing->paymentTransactions)->toHaveCount(1);
+    expect((float) $existing->paymentTransactions->first()->amount)->toBe(120000.0);
+    expect($existing->paymentTransactions->first()->payment_method)->toBe('card');
+    expect($existing->paymentTransactions->first()->reference)->toBe('INV-EDIT-002');
+});

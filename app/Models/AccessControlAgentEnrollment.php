@@ -24,6 +24,8 @@ class AccessControlAgentEnrollment extends Model
 
     protected $fillable = [
         'branch_id',
+        'integration_type',
+        'provider',
         'access_control_agent_id',
         'code',
         'code_hash',
@@ -40,6 +42,8 @@ class AccessControlAgentEnrollment extends Model
         return [
             'expires_at' => 'datetime',
             'used_at' => 'datetime',
+            'integration_type' => 'string',
+            'provider' => 'string',
         ];
     }
 
@@ -105,6 +109,16 @@ class AccessControlAgentEnrollment extends Model
         return $query->active()->notExpired();
     }
 
+    public function scopeForIntegration($query, string $integration_type)
+    {
+        return $query->where('integration_type', $integration_type);
+    }
+
+    public function scopeForProvider($query, string $provider)
+    {
+        return $query->where('provider', $provider);
+    }
+
     // -------------------------------------------------------------------------
     // Accessors & Helpers
     // -------------------------------------------------------------------------
@@ -143,7 +157,7 @@ class AccessControlAgentEnrollment extends Model
     public function getMaskedCodeAttribute(): string
     {
         if (!$this->code) {
-            return '••••••••';
+            return '********';
         }
 
         $length = strlen($this->code);
@@ -151,7 +165,7 @@ class AccessControlAgentEnrollment extends Model
             return $this->code;
         }
 
-        return str_repeat('•', $length - 8) . substr($this->code, -8);
+        return str_repeat('*', $length - 8) . substr($this->code, -8);
     }
 
     /**

@@ -411,19 +411,19 @@
                 </a>
             @endcan
 
-            @can('view attendance')
-                <a href="{{ route('attendance.index') }}" wire:navigate class="group overflow-hidden rounded-2xl border border-white/20 bg-white/70 p-6 shadow-xl shadow-zinc-900/5 backdrop-blur-xl transition hover:shadow-lg dark:border-zinc-700/50 dark:bg-zinc-800/70">
+            @canany(['view hikvision', 'manage hikvision', 'view attendance', 'view access devices', 'manage access devices'])
+                <a href="{{ route('hikvision.logs.index') }}" wire:navigate class="group overflow-hidden rounded-2xl border border-white/20 bg-white/70 p-6 shadow-xl shadow-zinc-900/5 backdrop-blur-xl transition hover:shadow-lg dark:border-zinc-700/50 dark:bg-zinc-800/70">
                     <div class="flex items-center gap-4">
                         <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-100 transition group-hover:bg-cyan-200 dark:bg-cyan-900/30 dark:group-hover:bg-cyan-900/50">
                             <flux:icon name="finger-print" class="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
                         </div>
                         <div>
-                            <h3 class="font-semibold text-zinc-900 dark:text-white">{{ __('Attendance') }}</h3>
-                            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('View attendance logs') }}</p>
+                            <h3 class="font-semibold text-zinc-900 dark:text-white">{{ __('HIKVision') }}</h3>
+                            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('View integration logs') }}</p>
                         </div>
                     </div>
                 </a>
-            @endcan
+            @endcanany
 
             @can('view subscriptions')
                 <a href="{{ route('subscriptions.index') }}" wire:navigate class="group overflow-hidden rounded-2xl border border-white/20 bg-white/70 p-6 shadow-xl shadow-zinc-900/5 backdrop-blur-xl transition hover:shadow-lg dark:border-zinc-700/50 dark:bg-zinc-800/70">

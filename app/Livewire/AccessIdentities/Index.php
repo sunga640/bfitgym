@@ -3,9 +3,11 @@
 namespace App\Livewire\AccessIdentities;
 
 use App\Models\AccessIdentity;
+use App\Models\AccessControlDevice;
 use App\Models\Member;
 use App\Models\User;
 use App\Services\BranchContext;
+use App\Support\Integrations\IntegrationPermission;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -18,6 +20,10 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use WithPagination;
+
+    public string $integration_type = AccessControlDevice::INTEGRATION_HIKVISION;
+    public string $integration_label = 'HIKVision';
+    public string $route_prefix = 'hikvision.identities';
 
     #[Url]
     public string $search = '';
@@ -45,7 +51,7 @@ class Index extends Component
 
     public function toggleStatus(int $id): void
     {
-        $identity = AccessIdentity::findOrFail($id);
+        $identity = $this->scopedIdentity($id);
         $this->authorize('update', $identity);
 
         $identity->update(['is_active' => !$identity->is_active]);
@@ -56,7 +62,7 @@ class Index extends Component
 
     public function delete(int $id): void
     {
-        $identity = AccessIdentity::findOrFail($id);
+        $identity = $this->scopedIdentity($id);
         $this->authorize('delete', $identity);
 
         $identity->delete();
@@ -65,6 +71,10 @@ class Index extends Component
 
     public function render(): View
     {
+        if (!IntegrationPermission::canView(auth()->user(), $this->integration_type)) {
+            abort(403);
+        }
+
         $this->authorize('viewAny', AccessIdentity::class);
 
         $branch_id = app(BranchContext::class)->getCurrentBranchId();
@@ -72,6 +82,7 @@ class Index extends Component
         $identities = AccessIdentity::query()
             ->with(['member', 'staff'])
             ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
+            ->forIntegration($this->integration_type)
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('device_user_id', 'like', "%{$this->search}%")
@@ -95,7 +106,16 @@ class Index extends Component
             'identities' => $identities,
             'members' => $members,
             'staff' => $staff,
+            'integration_label' => $this->integration_label,
+            'route_prefix' => $this->route_prefix,
+            'can_manage' => IntegrationPermission::canManage(auth()->user(), $this->integration_type),
         ]);
     }
-}
 
+    protected function scopedIdentity(int $identity_id): AccessIdentity
+    {
+        return AccessIdentity::query()
+            ->forIntegration($this->integration_type)
+            ->findOrFail($identity_id);
+    }
+}

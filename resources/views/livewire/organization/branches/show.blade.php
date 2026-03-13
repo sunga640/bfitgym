@@ -258,7 +258,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('access-control.devices.index') }}" wire:navigate class="rounded-xl border border-zinc-200 bg-white p-5 transition-colors hover:border-indigo-300 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-indigo-600">
+                <a href="{{ route('hikvision.devices.index') }}" wire:navigate class="rounded-xl border border-zinc-200 bg-white p-5 transition-colors hover:border-indigo-300 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-indigo-600">
                     <div class="flex items-center gap-3">
                         <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-100 dark:bg-cyan-900/50">
                             <flux:icon name="cpu-chip" class="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
@@ -390,4 +390,3 @@
         @endif
     </div>
 </div>
-

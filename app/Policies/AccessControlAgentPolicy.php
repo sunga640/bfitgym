@@ -3,7 +3,9 @@
 namespace App\Policies;
 
 use App\Models\AccessControlAgent;
+use App\Models\AccessControlDevice;
 use App\Models\User;
+use App\Support\Integrations\IntegrationPermission;
 use Illuminate\Database\Eloquent\Model;
 
 class AccessControlAgentPolicy extends BranchScopedPolicy
@@ -13,7 +15,10 @@ class AccessControlAgentPolicy extends BranchScopedPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyPermission(['view access devices', 'manage access devices'])
+        return (
+            IntegrationPermission::canView($user, AccessControlDevice::INTEGRATION_HIKVISION)
+            || IntegrationPermission::canView($user, AccessControlDevice::INTEGRATION_ZKTECO)
+        )
             && $this->hasCurrentBranchAccess($user);
     }
 
@@ -26,7 +31,7 @@ class AccessControlAgentPolicy extends BranchScopedPolicy
             return false;
         }
 
-        return $user->hasAnyPermission(['view access devices', 'manage access devices'])
+        return $this->canViewAgent($user, $model)
             && $this->belongsToUserBranch($user, $model);
     }
 
@@ -35,7 +40,10 @@ class AccessControlAgentPolicy extends BranchScopedPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('manage access devices') && $this->hasCurrentBranchAccess($user);
+        return (
+            IntegrationPermission::canManage($user, AccessControlDevice::INTEGRATION_HIKVISION)
+            || IntegrationPermission::canManage($user, AccessControlDevice::INTEGRATION_ZKTECO)
+        ) && $this->hasCurrentBranchAccess($user);
     }
 
     /**
@@ -47,7 +55,7 @@ class AccessControlAgentPolicy extends BranchScopedPolicy
             return false;
         }
 
-        return $user->hasPermissionTo('manage access devices')
+        return $this->canManageAgent($user, $model)
             && $this->belongsToUserBranch($user, $model);
     }
 
@@ -60,7 +68,7 @@ class AccessControlAgentPolicy extends BranchScopedPolicy
             return false;
         }
 
-        return $user->hasPermissionTo('manage access devices')
+        return $this->canManageAgent($user, $model)
             && $this->belongsToUserBranch($user, $model);
     }
 
@@ -70,7 +78,7 @@ class AccessControlAgentPolicy extends BranchScopedPolicy
             return false;
         }
 
-        return $user->hasPermissionTo('manage access devices')
+        return $this->canManageAgent($user, $model)
             && $this->belongsToUserBranch($user, $model);
     }
 
@@ -80,7 +88,33 @@ class AccessControlAgentPolicy extends BranchScopedPolicy
             return false;
         }
 
-        return $user->hasPermissionTo('manage access devices')
+        return $this->canManageAgent($user, $model)
             && $this->belongsToUserBranch($user, $model);
+    }
+
+    private function canViewAgent(User $user, AccessControlAgent $agent): bool
+    {
+        foreach ($agent->providerList() as $provider) {
+            $integration = AccessControlDevice::integrationTypeForProvider($provider);
+
+            if (IntegrationPermission::canView($user, $integration)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function canManageAgent(User $user, AccessControlAgent $agent): bool
+    {
+        foreach ($agent->providerList() as $provider) {
+            $integration = AccessControlDevice::integrationTypeForProvider($provider);
+
+            if (IntegrationPermission::canManage($user, $integration)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

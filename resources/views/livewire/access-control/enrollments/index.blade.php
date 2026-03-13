@@ -2,7 +2,7 @@
     {{-- Header --}}
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl">{{ __('Agent Enrollments') }}</flux:heading>
+            <flux:heading size="xl">{{ __(':integration Agent Enrollments', ['integration' => $integration_label]) }}</flux:heading>
             <flux:subheading>{{ __('Generate and manage enrollment codes for local agents.') }}</flux:subheading>
         </div>
         <div class="flex items-center gap-2">
@@ -74,7 +74,7 @@
                             </td>
                             <td class="px-4 py-3">
                                 @if($enrollment->agent)
-                                    <a href="{{ route('access-control.agents.show', $enrollment->agent) }}" wire:navigate class="font-medium text-zinc-900 hover:underline dark:text-white">
+                                    <a href="{{ route($route_base . '.agents.show', $enrollment->agent) }}" wire:navigate class="font-medium text-zinc-900 hover:underline dark:text-white">
                                         {{ $enrollment->agent->name }}
                                     </a>
                                     <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ Str::limit($enrollment->agent->uuid, 16) }}</p>
