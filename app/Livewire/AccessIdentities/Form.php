@@ -138,7 +138,7 @@ class Form extends Component
     protected function defaultProviderForIntegration(): string
     {
         if ($this->integration_type === AccessControlDevice::INTEGRATION_ZKTECO) {
-            return AccessControlDevice::PROVIDER_ZKBIO_PLATFORM;
+            return AccessControlDevice::PROVIDER_ZKTECO_ZKBIO;
         }
 
         return AccessControlDevice::PROVIDER_HIKVISION_AGENT;

@@ -11,5 +11,5 @@ class Form extends \App\Livewire\AccessIdentities\Form
     public string $integration_type = AccessControlDevice::INTEGRATION_ZKTECO;
     public string $integration_label = 'ZKTeco';
     public string $route_prefix = 'zkteco.identities';
-    public string $provider = AccessControlDevice::PROVIDER_ZKBIO_PLATFORM;
+    public string $provider = AccessControlDevice::PROVIDER_ZKTECO_ZKBIO;
 }

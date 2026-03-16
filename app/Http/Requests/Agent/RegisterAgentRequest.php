@@ -15,6 +15,27 @@ class RegisterAgentRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $os = strtolower(trim((string) $this->input('os', '')));
+
+        $aliases = [
+            'win' => 'windows',
+            'win32' => 'windows',
+            'mac' => 'macos',
+            'osx' => 'macos',
+            'darwin' => 'macos',
+        ];
+
+        if (isset($aliases[$os])) {
+            $os = $aliases[$os];
+        }
+
+        if ($os !== '') {
+            $this->merge(['os' => $os]);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *

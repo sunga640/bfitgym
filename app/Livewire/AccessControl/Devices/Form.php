@@ -289,8 +289,9 @@ class Form extends Component
     {
         if ($this->integration_type === AccessControlDevice::INTEGRATION_ZKTECO) {
             return [
-                AccessControlDevice::PROVIDER_ZKBIO_PLATFORM => __('ZKBio Platform (Preferred)'),
+                AccessControlDevice::PROVIDER_ZKTECO_ZKBIO => __('ZKBio CVAccess (Primary)'),
                 AccessControlDevice::PROVIDER_ZKTECO_AGENT => __('Local Agent (Fallback)'),
+                AccessControlDevice::PROVIDER_ZKBIO_PLATFORM => __('ZKBio Platform (Legacy Alias)'),
             ];
         }
 
@@ -302,7 +303,7 @@ class Form extends Component
     protected function defaultProviderForIntegration(): string
     {
         if ($this->integration_type === AccessControlDevice::INTEGRATION_ZKTECO) {
-            return AccessControlDevice::PROVIDER_ZKBIO_PLATFORM;
+            return AccessControlDevice::PROVIDER_ZKTECO_ZKBIO;
         }
 
         return AccessControlDevice::PROVIDER_HIKVISION_AGENT;

@@ -13,5 +13,5 @@ class Form extends \App\Livewire\AccessControl\Devices\Form
     public string $route_prefix = 'zkteco.devices';
     public string $route_base = 'zkteco';
     public string $device_model = 'ZKTeco Terminal';
-    public string $provider = AccessControlDevice::PROVIDER_ZKBIO_PLATFORM;
+    public string $provider = AccessControlDevice::PROVIDER_ZKTECO_ZKBIO;
 }

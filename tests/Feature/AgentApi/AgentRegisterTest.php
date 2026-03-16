@@ -75,3 +75,53 @@ test('register success and token not stored plaintext', function () {
     expect($first_device)->toBeArray();
     expect(array_key_exists('password_encrypted', $first_device))->toBeFalse();
 });
+
+test('register accepts legacy mac os alias', function () {
+    $branch = Branch::factory()->create();
+
+    $enrollment = AccessControlAgentEnrollment::create([
+        'branch_id' => $branch->id,
+        'code' => 'ENROLL-MAC-123',
+        'expires_at' => now()->addMinutes(30),
+        'created_by' => null,
+        'used_at' => null,
+        'used_by_agent_id' => null,
+    ]);
+
+    $response = $this->postJson('/api/agent/register', [
+        'enrollment_code' => $enrollment->code,
+        'name' => 'Mac Front Desk',
+        'os' => 'mac',
+        'app_version' => '1.0.0',
+    ]);
+
+    $response->assertOk();
+
+    $agent = AccessControlAgent::query()->where('uuid', $response->json('agent_uuid'))->first();
+    expect($agent)->not->toBeNull();
+    expect($agent->os)->toBe('macos');
+});
+
+test('register returns specific error for already used enrollment code', function () {
+    $branch = Branch::factory()->create();
+
+    AccessControlAgentEnrollment::create([
+        'branch_id' => $branch->id,
+        'code' => 'ENROLL-USED-123',
+        'status' => AccessControlAgentEnrollment::STATUS_USED,
+        'expires_at' => now()->addMinutes(30),
+        'created_by' => null,
+        'used_at' => now()->subMinute(),
+        'used_by_agent_id' => null,
+    ]);
+
+    $response = $this->postJson('/api/agent/register', [
+        'enrollment_code' => 'ENROLL-USED-123',
+        'name' => 'Front Desk PC',
+        'os' => 'windows',
+        'app_version' => '1.0.0',
+    ]);
+
+    $response->assertStatus(422);
+    expect((string) $response->json('message'))->toContain('already used');
+});

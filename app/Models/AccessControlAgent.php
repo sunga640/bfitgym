@@ -213,7 +213,14 @@ class AccessControlAgent extends Model
             $providers = [AccessControlDevice::PROVIDER_HIKVISION_AGENT];
         }
 
-        return array_values(array_unique(array_filter($providers)));
+        $expanded = [];
+        foreach ($providers as $provider) {
+            foreach (AccessControlDevice::providerAliases((string) $provider) as $alias) {
+                $expanded[] = $alias;
+            }
+        }
+
+        return array_values(array_unique(array_filter($expanded)));
     }
 
     public function supportsProvider(string $provider): bool

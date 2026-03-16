@@ -385,6 +385,7 @@ class AgentCommandsController extends Controller
             'branch_id' => $cmd->branch_id,
             'integration_type' => $cmd->integration_type,
             'provider' => $cmd->provider,
+            'driver' => AccessControlDevice::driverForProvider($cmd->provider),
             'device_id' => $cmd->access_control_device_id,
             'type' => $cmd->type,
             'payload' => $cmd->payload,
