@@ -2,13 +2,15 @@
 
 namespace App\Livewire\Zkteco;
 
-use App\Models\AccessControlAgentEnrollment;
+use App\Integrations\Zkteco\Services\ZktecoHealthService;
 use App\Models\AccessControlDevice;
-use App\Models\AccessIdentity;
-use App\Models\AccessIntegrationConfig;
-use App\Models\AccessLog;
 use App\Services\BranchContext;
 use App\Support\Integrations\IntegrationPermission;
+use App\Models\ZktecoAccessEvent;
+use App\Models\ZktecoConnection;
+use App\Models\ZktecoDevice;
+use App\Models\ZktecoMemberMap;
+use App\Models\ZktecoSyncRun;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -18,48 +20,58 @@ use Livewire\Component;
 #[Title('ZKTeco')]
 class Overview extends Component
 {
-    public function render(): View
+    public function render(ZktecoHealthService $health_service): View
     {
         if (!IntegrationPermission::canView(auth()->user(), AccessControlDevice::INTEGRATION_ZKTECO)) {
             abort(403);
         }
 
         $branch_id = app(BranchContext::class)->getCurrentBranchId();
-
-        $config = AccessIntegrationConfig::query()
+        $connection = ZktecoConnection::query()
             ->withoutBranchScope()
-            ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
-            ->where('integration_type', AccessControlDevice::INTEGRATION_ZKTECO)
+            ->where('branch_id', $branch_id)
             ->first();
 
-        $device_count = AccessControlDevice::query()
-            ->forIntegration(AccessControlDevice::INTEGRATION_ZKTECO)
-            ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
+        $health = $health_service->healthForBranch($branch_id);
+
+        $device_count = ZktecoDevice::query()
+            ->withoutBranchScope()
+            ->where('branch_id', $branch_id)
             ->count();
 
-        $identity_count = AccessIdentity::query()
-            ->forIntegration(AccessControlDevice::INTEGRATION_ZKTECO)
-            ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
+        $event_count_today = ZktecoAccessEvent::query()
+            ->withoutBranchScope()
+            ->where('branch_id', $branch_id)
+            ->whereDate('occurred_at', today())
             ->count();
 
-        $log_count_today = AccessLog::query()
-            ->forIntegration(AccessControlDevice::INTEGRATION_ZKTECO)
-            ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
-            ->whereDate('event_timestamp', today())
+        $pending_biometrics = ZktecoMemberMap::query()
+            ->withoutBranchScope()
+            ->where('branch_id', $branch_id)
+            ->where('biometric_status', ZktecoMemberMap::BIOMETRIC_PENDING)
             ->count();
 
-        $enrollment_count = AccessControlAgentEnrollment::query()
-            ->forIntegration(AccessControlDevice::INTEGRATION_ZKTECO)
-            ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
+        $recent_runs = ZktecoSyncRun::query()
+            ->withoutBranchScope()
+            ->where('branch_id', $branch_id)
+            ->latest('started_at')
+            ->limit(5)
+            ->get();
+
+        $mapped_devices = $connection?->branchMappings()
+            ->withoutBranchScope()
+            ->where('branch_id', $branch_id)
+            ->where('is_active', true)
             ->count();
 
         return view('livewire.zkteco.overview', [
-            'config' => $config,
+            'connection' => $connection,
+            'health' => $health,
             'device_count' => $device_count,
-            'identity_count' => $identity_count,
-            'log_count_today' => $log_count_today,
-            'enrollment_count' => $enrollment_count,
+            'event_count_today' => $event_count_today,
+            'pending_biometrics' => $pending_biometrics,
+            'mapped_devices' => $mapped_devices,
+            'recent_runs' => $recent_runs,
         ]);
     }
 }
-

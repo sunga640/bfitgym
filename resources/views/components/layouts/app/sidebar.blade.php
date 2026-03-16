@@ -435,7 +435,7 @@
             </details>
         @endcanany
 
-        @canany(['view zkteco', 'manage zkteco', 'manage zkteco settings', 'view access devices', 'manage access devices'])
+        @canany(['view zkteco', 'manage zkteco', 'manage zkteco settings'])
             <details class="side-group" @if(request()->routeIs('zkteco.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('zkteco.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
@@ -446,12 +446,8 @@
                 </summary>
                 <div class="side-children">
                     <a href="{{ route('zkteco.overview') }}" class="side-child {{ request()->routeIs('zkteco.overview') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Overview') }}</a>
-                    <a href="{{ route('zkteco.logs.index') }}" class="side-child {{ request()->routeIs('zkteco.logs.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Logs') }}</a>
-                    <a href="{{ route('zkteco.devices.index') }}" class="side-child {{ request()->routeIs('zkteco.devices.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Devices') }}</a>
-                    <a href="{{ route('zkteco.identities.index') }}" class="side-child {{ request()->routeIs('zkteco.identities.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Identities') }}</a>
-                    <a href="{{ route('zkteco.enrollments.index') }}" class="side-child {{ request()->routeIs('zkteco.enrollments.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Enrollments') }}</a>
-                    <a href="{{ route('zkteco.agents.index') }}" class="side-child {{ request()->routeIs('zkteco.agents.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Agent Status') }}</a>
-                    @canany(['manage zkteco settings', 'manage zkteco', 'manage access devices'])
+                    <a href="{{ route('zkteco.logs.index') }}" class="side-child {{ request()->routeIs('zkteco.logs.*', 'zkteco.events.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Logs') }}</a>
+                    @canany(['manage zkteco settings', 'manage zkteco'])
                         <a href="{{ route('zkteco.settings') }}" class="side-child {{ request()->routeIs('zkteco.settings') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Settings') }}</a>
                     @endcanany
                 </div>

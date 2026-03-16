@@ -16,8 +16,7 @@ class IntegrationPermission
             AccessControlDevice::INTEGRATION_ZKTECO => [
                 'view zkteco',
                 'manage zkteco',
-                'view access devices',
-                'manage access devices',
+                'manage zkteco settings',
             ],
             default => [
                 'view hikvision',
@@ -37,7 +36,7 @@ class IntegrationPermission
         return match ($integration_type) {
             AccessControlDevice::INTEGRATION_ZKTECO => [
                 'manage zkteco',
-                'manage access devices',
+                'manage zkteco settings',
             ],
             default => [
                 'manage hikvision',
@@ -62,11 +61,9 @@ class IntegrationPermission
             return $user->hasAnyPermission([
                 'manage zkteco settings',
                 'manage zkteco',
-                'manage access devices',
             ]);
         }
 
         return self::canManage($user, $integration_type);
     }
 }
-

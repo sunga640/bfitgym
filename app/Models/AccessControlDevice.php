@@ -247,7 +247,6 @@ class AccessControlDevice extends Model
         return match ($integration_type) {
             self::INTEGRATION_ZKTECO => [
                 self::PROVIDER_ZKBIO_PLATFORM,
-                self::PROVIDER_ZKTECO_AGENT,
             ],
             default => [self::PROVIDER_HIKVISION_AGENT],
         };

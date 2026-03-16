@@ -281,24 +281,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/identities/{identity}/edit', \App\Livewire\AccessIdentities\Form::class)->name('identities.edit');
     });
 
-    // ZKTeco (provider-based: platform preferred, agent fallback)
+    // ZKTeco (ZKBio control-plane integration)
     Route::prefix('zkteco')->name('zkteco.')->group(function () {
         Route::get('/', \App\Livewire\Zkteco\Overview::class)->name('overview');
         Route::get('/logs', \App\Livewire\Zkteco\Logs\Index::class)->name('logs.index');
-
-        Route::get('/devices', \App\Livewire\Zkteco\Devices\Index::class)->name('devices.index');
-        Route::get('/devices/create', \App\Livewire\Zkteco\Devices\Form::class)->name('devices.create');
-        Route::get('/devices/{device}', \App\Livewire\Zkteco\Devices\Show::class)->name('devices.show');
-        Route::get('/devices/{device}/edit', \App\Livewire\Zkteco\Devices\Form::class)->name('devices.edit');
-
-        Route::get('/identities', \App\Livewire\Zkteco\Identities\Index::class)->name('identities.index');
-        Route::get('/identities/create', \App\Livewire\Zkteco\Identities\Form::class)->name('identities.create');
-        Route::get('/identities/{identity}/edit', \App\Livewire\Zkteco\Identities\Form::class)->name('identities.edit');
-
-        Route::get('/enrollments', \App\Livewire\Zkteco\Enrollments\Index::class)->name('enrollments.index');
-        Route::get('/agents', \App\Livewire\Zkteco\Agents\Index::class)->name('agents.index');
-        Route::get('/agents/{agent}', \App\Livewire\Zkteco\Agents\Show::class)->name('agents.show');
-
+        Route::get('/events', \App\Livewire\Zkteco\Logs\Index::class)->name('events.index');
         Route::get('/settings', \App\Livewire\Zkteco\Settings::class)->name('settings');
     });
 

@@ -20,6 +20,9 @@ use App\Models\MemberSubscription;
 use App\Models\MembershipPackage;
 use App\Models\User;
 use App\Models\WorkoutPlan;
+use App\Models\ZktecoAccessEvent;
+use App\Models\ZktecoConnection;
+use App\Models\ZktecoDevice;
 use App\Observers\MemberInsuranceObserver;
 use App\Observers\MemberObserver;
 use App\Observers\MemberSubscriptionObserver;
@@ -40,6 +43,9 @@ use App\Policies\MemberSubscriptionPolicy;
 use App\Policies\MembershipPackagePolicy;
 use App\Policies\UserPolicy;
 use App\Policies\WorkoutPlanPolicy;
+use App\Policies\ZktecoAccessEventPolicy;
+use App\Policies\ZktecoConnectionPolicy;
+use App\Policies\ZktecoDevicePolicy;
 use App\Services\BranchContext;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -93,6 +99,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AccessIdentity::class, AccessIdentityPolicy::class);
         Gate::policy(Location::class, LocationPolicy::class);
         Gate::policy(WorkoutPlan::class, WorkoutPlanPolicy::class);
+        Gate::policy(ZktecoConnection::class, ZktecoConnectionPolicy::class);
+        Gate::policy(ZktecoDevice::class, ZktecoDevicePolicy::class);
+        Gate::policy(ZktecoAccessEvent::class, ZktecoAccessEventPolicy::class);
 
         // Model observers (must not call device/network; only enqueue outbox commands)
         Member::observe(MemberObserver::class);

@@ -199,6 +199,36 @@ class Branch extends Model
         return $this->hasMany(AccessIntegrationConfig::class);
     }
 
+    public function zktecoConnections(): HasMany
+    {
+        return $this->hasMany(ZktecoConnection::class);
+    }
+
+    public function zktecoDevices(): HasMany
+    {
+        return $this->hasMany(ZktecoDevice::class);
+    }
+
+    public function zktecoBranchMappings(): HasMany
+    {
+        return $this->hasMany(ZktecoBranchMapping::class);
+    }
+
+    public function zktecoSyncRuns(): HasMany
+    {
+        return $this->hasMany(ZktecoSyncRun::class);
+    }
+
+    public function zktecoAccessEvents(): HasMany
+    {
+        return $this->hasMany(ZktecoAccessEvent::class);
+    }
+
+    public function zktecoMemberMaps(): HasMany
+    {
+        return $this->hasMany(ZktecoMemberMap::class);
+    }
+
     /**
      * Get all expense categories for this branch.
      */

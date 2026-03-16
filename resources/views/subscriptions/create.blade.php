@@ -7,4 +7,3 @@
 
     <livewire:subscriptions.form />
 </x-layouts.app>
-

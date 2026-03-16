@@ -22,6 +22,18 @@
             </div>
         </div>
 
+        @if(session('dashboard_success'))
+            <flux:callout variant="success" icon="check-circle" dismissible class="mb-6">
+                {{ session('dashboard_success') }}
+            </flux:callout>
+        @endif
+
+        @if(session('dashboard_error'))
+            <flux:callout variant="danger" icon="exclamation-circle" dismissible class="mb-6">
+                {{ session('dashboard_error') }}
+            </flux:callout>
+        @endif
+
         {{-- Stats Grid --}}
         <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {{-- Active Members --}}
@@ -213,6 +225,43 @@
 
             {{-- Right Column --}}
             <div class="space-y-6">
+                @if($this->zktecoHealth)
+                    <div class="rounded-2xl border border-white/20 bg-white/70 shadow-xl shadow-zinc-900/5 backdrop-blur-xl dark:border-zinc-700/50 dark:bg-zinc-800/70">
+                        <div class="border-b border-zinc-200/50 px-6 py-4 dark:border-zinc-700/50">
+                            <h2 class="font-semibold text-zinc-900 dark:text-white">{{ __('ZKTeco Health') }}</h2>
+                        </div>
+                        <div class="space-y-3 p-5 text-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-zinc-500 dark:text-zinc-400">{{ __('Status') }}</span>
+                                <span class="font-medium text-zinc-900 dark:text-white">{{ strtoupper($this->zktecoHealth['status']) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-zinc-500 dark:text-zinc-400">{{ __('Online Devices') }}</span>
+                                <span class="font-medium text-zinc-900 dark:text-white">{{ $this->zktecoHealth['online_devices_count'] }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-zinc-500 dark:text-zinc-400">{{ __('Last Event Sync') }}</span>
+                                <span class="font-medium text-zinc-900 dark:text-white">{{ $this->zktecoHealth['last_event_sync_at']?->diffForHumans() ?? '-' }}</span>
+                            </div>
+                            @if($this->zktecoHealth['last_error'])
+                                <p class="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:bg-rose-900/20 dark:text-rose-300">
+                                    {{ $this->zktecoHealth['last_error'] }}
+                                </p>
+                            @endif
+                            <div class="flex gap-2 pt-1">
+                                @canany(['manage zkteco', 'manage zkteco settings'])
+                                    <flux:button variant="ghost" size="sm" wire:click="retryZktecoHealthCheck">
+                                        {{ __('Retry') }}
+                                    </flux:button>
+                                @endcanany
+                                <flux:button variant="ghost" size="sm" href="{{ route('zkteco.settings') }}" wire:navigate>
+                                    {{ __('Open Settings') }}
+                                </flux:button>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Today's POS Sales --}}
                 <div class="rounded-2xl border border-white/20 bg-white/70 shadow-xl shadow-zinc-900/5 backdrop-blur-xl dark:border-zinc-700/50 dark:bg-zinc-800/70">
                     <div class="border-b border-zinc-200/50 px-6 py-4 dark:border-zinc-700/50">

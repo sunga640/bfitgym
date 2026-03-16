@@ -2,6 +2,10 @@
 
 namespace App\Livewire;
 
+use App\Integrations\Zkteco\Repositories\ZktecoConnectionRepository;
+use App\Integrations\Zkteco\Services\ZktecoConnectionService;
+use App\Integrations\Zkteco\Services\ZktecoHealthService;
+use App\Models\AccessControlDevice;
 use App\Models\AccessLog;
 use App\Models\BranchProduct;
 use App\Models\Member;
@@ -10,6 +14,7 @@ use App\Models\PaymentTransaction;
 use App\Models\PosSale;
 use App\Services\Inventory\InventoryService;
 use App\Services\Revenue\RevenueReportService;
+use App\Support\Integrations\IntegrationPermission;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -276,9 +281,42 @@ class Dashboard extends Component
         return $months;
     }
 
+    #[Computed]
+    public function zktecoHealth(): ?array
+    {
+        if (!IntegrationPermission::canView(auth()->user(), AccessControlDevice::INTEGRATION_ZKTECO)) {
+            return null;
+        }
+
+        return app(ZktecoHealthService::class)->healthForBranch(current_branch_id());
+    }
+
+    public function retryZktecoHealthCheck(
+        ZktecoConnectionRepository $connections,
+        ZktecoConnectionService $service
+    ): void {
+        if (!IntegrationPermission::canManage(auth()->user(), AccessControlDevice::INTEGRATION_ZKTECO)) {
+            return;
+        }
+
+        $branch_id = current_branch_id();
+        if (!$branch_id) {
+            session()->flash('dashboard_error', __('Please select a branch first.'));
+            return;
+        }
+
+        $connection = $connections->forBranch($branch_id);
+        if (!$connection) {
+            session()->flash('dashboard_error', __('Configure ZKTeco connection in settings first.'));
+            return;
+        }
+
+        $result = $service->testConnection($connection, auth()->user());
+        session()->flash($result->ok ? 'dashboard_success' : 'dashboard_error', $result->message);
+    }
+
     public function render(): View
     {
         return view('livewire.dashboard');
     }
 }
-
