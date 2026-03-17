@@ -76,7 +76,7 @@ class Index extends Component
                     $inner->whereNull('supported_providers')
                         ->orWhereJsonContains('supported_providers', AccessControlDevice::PROVIDER_HIKVISION_AGENT);
                 }),
-                fn($q) => $q->whereJsonContains('supported_providers', $this->provider_filter),
+                fn($q) => $this->applyProviderFilter($q),
             )
             ->latest()
             ->paginate(12);
@@ -99,8 +99,19 @@ class Index extends Component
                     $inner->whereNull('supported_providers')
                         ->orWhereJsonContains('supported_providers', AccessControlDevice::PROVIDER_HIKVISION_AGENT);
                 }),
-                fn($q) => $q->whereJsonContains('supported_providers', $this->provider_filter),
+                fn($q) => $this->applyProviderFilter($q),
             )
             ->findOrFail($agent_id);
+    }
+
+    private function applyProviderFilter($query)
+    {
+        $aliases = AccessControlDevice::providerAliases($this->provider_filter);
+
+        return $query->where(function ($inner) use ($aliases) {
+            foreach ($aliases as $alias) {
+                $inner->orWhereJsonContains('supported_providers', $alias);
+            }
+        });
     }
 }

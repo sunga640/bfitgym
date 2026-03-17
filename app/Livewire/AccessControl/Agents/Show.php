@@ -200,7 +200,7 @@ class Show extends Component
         $available_devices = AccessControlDevice::query()
             ->where('branch_id', $this->agent->branch_id)
             ->forIntegration($this->integration_type)
-            ->when($this->provider_filter, fn($q) => $q->forProvider($this->provider_filter))
+            ->whereIn('provider', AccessControlDevice::providerAliases($this->provider_filter))
             ->where('status', AccessControlDevice::STATUS_ACTIVE)
             ->orderBy('name')
             ->get();
@@ -208,7 +208,7 @@ class Show extends Component
         // Recent enrollments for this agent
         $enrollments = AccessControlAgentEnrollment::query()
             ->forIntegration($this->integration_type)
-            ->forProvider($this->provider_filter)
+            ->whereIn('provider', AccessControlDevice::providerAliases($this->provider_filter))
             ->where(function ($q) {
                 $q->where('access_control_agent_id', $this->agent->id)
                     ->orWhere('used_by_agent_id', $this->agent->id);
@@ -222,7 +222,7 @@ class Show extends Component
         $recent_commands = AccessControlDeviceCommand::query()
             ->where('claimed_by_agent_id', $this->agent->id)
             ->forIntegration($this->integration_type)
-            ->forProvider($this->provider_filter)
+            ->whereIn('provider', AccessControlDevice::providerAliases($this->provider_filter))
             ->with('device')
             ->latest()
             ->take(50)

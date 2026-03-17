@@ -138,60 +138,66 @@
                     @if($requires_credentials)
                         {{ __('Network and authentication configuration used by the local agent/device connector.') }}
                     @else
-                        {{ __('Optional device connection details. Platform mode can run without direct device credentials.') }}
+                        {{ __('This provider uses shared local-agent CVAccess settings. No per-device LAN credentials are required.') }}
                     @endif
                 </p>
             </div>
 
-            <div class="grid gap-6 sm:grid-cols-2">
-                <flux:field>
-                    <flux:label>{{ __('IP Address') }} {{ $requires_credentials ? '*' : '' }}</flux:label>
-                    <flux:input
-                        wire:model="ip_address"
-                        type="text"
-                        placeholder="{{ __('e.g., 192.168.1.100') }}"
-                    />
-                    <flux:error name="ip_address" />
-                </flux:field>
+            @if($requires_credentials)
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <flux:field>
+                        <flux:label>{{ __('IP Address') }} *</flux:label>
+                        <flux:input
+                            wire:model="ip_address"
+                            type="text"
+                            placeholder="{{ __('e.g., 192.168.1.100') }}"
+                        />
+                        <flux:error name="ip_address" />
+                    </flux:field>
 
-                <flux:field>
-                    <flux:label>{{ __('Port') }} *</flux:label>
-                    <flux:input
-                        wire:model="port"
-                        type="number"
-                        min="1"
-                        max="65535"
-                        placeholder="80"
-                        required
-                    />
-                    <flux:error name="port" />
-                    <flux:description>{{ __('Default is 80 for HTTP, 443 for HTTPS.') }}</flux:description>
-                </flux:field>
+                    <flux:field>
+                        <flux:label>{{ __('Port') }} *</flux:label>
+                        <flux:input
+                            wire:model="port"
+                            type="number"
+                            min="1"
+                            max="65535"
+                            placeholder="80"
+                            required
+                        />
+                        <flux:error name="port" />
+                        <flux:description>{{ __('Default is 80 for HTTP, 443 for HTTPS.') }}</flux:description>
+                    </flux:field>
 
-                <flux:field>
-                    <flux:label>{{ __('Username') }} {{ $requires_credentials ? '*' : '' }}</flux:label>
-                    <flux:input
-                        wire:model="username"
-                        type="text"
-                        placeholder="admin"
-                    />
-                    <flux:error name="username" />
-                </flux:field>
+                    <flux:field>
+                        <flux:label>{{ __('Username') }} *</flux:label>
+                        <flux:input
+                            wire:model="username"
+                            type="text"
+                            placeholder="admin"
+                        />
+                        <flux:error name="username" />
+                    </flux:field>
 
-                <flux:field>
-                    <flux:label>{{ __('Password') }} {{ (!$is_editing && $requires_credentials) ? '*' : '' }}</flux:label>
-                    <flux:input
-                        wire:model="password"
-                        type="password"
-                        placeholder="{{ $is_editing ? __('Leave blank to keep current') : __('Device password') }}"
-                        :required="$requires_credentials && !$is_editing"
-                    />
-                    <flux:error name="password" />
-                    @if($is_editing)
-                        <flux:description>{{ __('Leave blank to keep the current password.') }}</flux:description>
-                    @endif
-                </flux:field>
-            </div>
+                    <flux:field>
+                        <flux:label>{{ __('Password') }} {{ !$is_editing ? '*' : '' }}</flux:label>
+                        <flux:input
+                            wire:model="password"
+                            type="password"
+                            placeholder="{{ $is_editing ? __('Leave blank to keep current') : __('Device password') }}"
+                            :required="!$is_editing"
+                        />
+                        <flux:error name="password" />
+                        @if($is_editing)
+                            <flux:description>{{ __('Leave blank to keep the current password.') }}</flux:description>
+                        @endif
+                    </flux:field>
+                </div>
+            @else
+                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
+                    {{ __('Set the shared ZKTeco CVAccess host and credentials on the receptionist PC running local-agent. This device entry only needs name/serial/provider mapping.') }}
+                </div>
+            @endif
         </div>
 
         {{-- Device Capabilities --}}

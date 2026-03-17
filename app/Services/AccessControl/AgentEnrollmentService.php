@@ -38,7 +38,7 @@ class AgentEnrollmentService
         ?string $provider = null,
     ): array {
         $provider = $provider ?: ($integration_type === AccessControlDevice::INTEGRATION_ZKTECO
-            ? AccessControlDevice::PROVIDER_ZKTECO_AGENT
+            ? AccessControlDevice::PROVIDER_ZKTECO_ZKBIO
             : AccessControlDevice::PROVIDER_HIKVISION_AGENT);
 
         // Validate devices belong to the same branch
@@ -241,10 +241,12 @@ class AgentEnrollmentService
             return [];
         }
 
+        $provider_aliases = $provider ? AccessControlDevice::providerAliases($provider) : null;
+
         return AccessControlDevice::query()
             ->where('branch_id', $branch_id)
             ->forIntegration($integration_type)
-            ->when($provider, fn($q) => $q->forProvider($provider))
+            ->when($provider_aliases, fn($q) => $q->whereIn('provider', $provider_aliases))
             ->whereIn('id', $device_ids)
             ->pluck('id')
             ->all();

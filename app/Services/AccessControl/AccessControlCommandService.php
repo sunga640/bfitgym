@@ -17,12 +17,25 @@ use Illuminate\Support\Facades\Log;
 
 class AccessControlCommandService
 {
-    public function enqueueDisableFingerprintForMember(Member $member, User $actor): array
+    public function enqueueDisableFingerprintForMember(
+        Member $member,
+        User $actor,
+        ?string $integration_type = null,
+        ?string $provider = null,
+    ): array
     {
         $device_user_id = trim((string) ($member->member_no ?? ''));
         if ($device_user_id === '') {
             throw new AccessControlActionException('Member is missing member number; cannot build device_user_id.');
         }
+
+        $target = $this->resolveIntegrationAndProvider(
+            branch_id: $member->branch_id,
+            integration_type: $integration_type,
+            provider: $provider,
+            subject_type: AccessIdentity::SUBJECT_MEMBER,
+            subject_id: $member->id,
+        );
 
         // Use last week for both valid_from and valid_to to ensure user is clearly expired
         // regardless of timezone differences between cloud and local agent.
@@ -44,6 +57,8 @@ class AccessControlCommandService
             'member_id' => $member->id,
             'member_no' => $member->member_no,
             'device_user_id' => $device_user_id,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'actor_user_id' => $actor->id,
             'valid_from' => $valid_from,
             'valid_to' => $valid_to,
@@ -54,19 +69,34 @@ class AccessControlCommandService
         return $this->enqueueAccessSetValidityForMember($member, $valid_from, $valid_to, [
             'member_no' => $member->member_no,
             'device_user_id' => $device_user_id,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'actor_user_id' => $actor->id,
             'valid_from' => $valid_from,
             'eligibility_allowed' => $allowed,
             'eligibility_allowed_until' => $allowed_until?->toDateString(),
-        ]);
+        ], $target['integration_type'], $target['provider']);
     }
 
-    public function enqueueEnableFingerprintForMember(Member $member, User $actor): array
+    public function enqueueEnableFingerprintForMember(
+        Member $member,
+        User $actor,
+        ?string $integration_type = null,
+        ?string $provider = null,
+    ): array
     {
         $device_user_id = trim((string) ($member->member_no ?? ''));
         if ($device_user_id === '') {
             throw new AccessControlActionException('Member is missing member number; cannot build device_user_id.');
         }
+
+        $target = $this->resolveIntegrationAndProvider(
+            branch_id: $member->branch_id,
+            integration_type: $integration_type,
+            provider: $provider,
+            subject_type: AccessIdentity::SUBJECT_MEMBER,
+            subject_id: $member->id,
+        );
 
         $eligibility = app(AccessEligibilityService::class);
 
@@ -85,6 +115,8 @@ class AccessControlCommandService
             'member_id' => $member->id,
             'member_no' => $member->member_no,
             'device_user_id' => $device_user_id,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'actor_user_id' => $actor->id,
             'valid_from' => $valid_from,
             'valid_to' => $valid_to,
@@ -95,11 +127,13 @@ class AccessControlCommandService
         return $this->enqueueAccessSetValidityForMember($member, $valid_from, $valid_to, [
             'member_no' => $member->member_no,
             'device_user_id' => $device_user_id,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'actor_user_id' => $actor->id,
             'valid_from' => $valid_from,
             'eligibility_allowed' => true,
             'eligibility_allowed_until' => $allowed_until?->toDateString(),
-        ]);
+        ], $target['integration_type'], $target['provider']);
     }
 
     /**
@@ -116,10 +150,16 @@ class AccessControlCommandService
             throw new \InvalidArgumentException('Member member_no is required to build device_user_id.');
         }
 
+        $target = $this->resolveIntegrationAndProvider(
+            branch_id: $member->branch_id,
+            subject_type: AccessIdentity::SUBJECT_MEMBER,
+            subject_id: $member->id,
+        );
+
         $identity = AccessIdentity::query()
             ->withoutBranchScope()
             ->where('branch_id', $member->branch_id)
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
+            ->where('integration_type', $target['integration_type'])
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
             ->first();
@@ -130,8 +170,8 @@ class AccessControlCommandService
 
         return AccessIdentity::create([
             'branch_id' => $member->branch_id,
-            'integration_type' => AccessControlDevice::INTEGRATION_HIKVISION,
-            'provider' => AccessControlDevice::PROVIDER_HIKVISION_AGENT,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'subject_type' => AccessIdentity::SUBJECT_MEMBER,
             'subject_id' => $member->id,
             'device_user_id' => $member->member_no,
@@ -155,11 +195,19 @@ class AccessControlCommandService
         $allowed_until = $eligibility->allowed_until($member, $today); // nullable; null means infinite
 
         $identity = $this->ensure_access_identity_for_member($member);
+        $target = $this->resolveIntegrationAndProvider(
+            branch_id: $member->branch_id,
+            integration_type: $identity->integration_type,
+            provider: $identity->provider,
+            subject_type: AccessIdentity::SUBJECT_MEMBER,
+            subject_id: $member->id,
+        );
 
         $devices = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $member->branch_id)
-            ->forIntegration(AccessControlDevice::INTEGRATION_HIKVISION)
+            ->forIntegration($target['integration_type'])
+            ->when($target['provider'], fn($q) => $q->forProvider($target['provider']))
             ->active()
             ->get();
 
@@ -335,6 +383,8 @@ class AccessControlCommandService
             subject_type: AccessIdentity::SUBJECT_MEMBER,
             subject_id: $member->id,
             priority: 10,
+            integration_type: $identity->integration_type ?: AccessControlDevice::INTEGRATION_HIKVISION,
+            provider: $identity->provider,
         );
     }
 
@@ -343,17 +393,33 @@ class AccessControlCommandService
      *
      * @return array<int, string> created command UUIDs
      */
-    public function enqueueAccessSetValidityForMember(Member $member, ?string $valid_from, ?string $valid_to, array $log_context = []): array
+    public function enqueueAccessSetValidityForMember(
+        Member $member,
+        ?string $valid_from,
+        ?string $valid_to,
+        array $log_context = [],
+        ?string $integration_type = null,
+        ?string $provider = null,
+    ): array
     {
         $device_user_id = trim((string) ($member->member_no ?? ''));
         if ($device_user_id === '') {
             throw new \InvalidArgumentException('Member member_no is required to build device_user_id.');
         }
 
+        $target = $this->resolveIntegrationAndProvider(
+            branch_id: $member->branch_id,
+            integration_type: $integration_type,
+            provider: $provider,
+            subject_type: AccessIdentity::SUBJECT_MEMBER,
+            subject_id: $member->id,
+        );
+
         $devices = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $member->branch_id)
-            ->forIntegration(AccessControlDevice::INTEGRATION_HIKVISION)
+            ->forIntegration($target['integration_type'])
+            ->when($target['provider'], fn($q) => $q->forProvider($target['provider']))
             ->active()
             ->get();
 
@@ -385,6 +451,8 @@ class AccessControlCommandService
                 'device_id' => $device->id,
                 'branch_id' => $device->branch_id,
                 'member_id' => $member->id,
+                'integration_type' => $target['integration_type'],
+                'provider' => $target['provider'],
                 'valid_to' => $valid_to,
                 ...$log_context,
             ]);
@@ -406,6 +474,8 @@ class AccessControlCommandService
             subject_type: AccessIdentity::SUBJECT_MEMBER,
             subject_id: $member->id,
             priority: 20,
+            integration_type: $identity->integration_type ?: AccessControlDevice::INTEGRATION_HIKVISION,
+            provider: $identity->provider,
         );
     }
 
@@ -422,12 +492,15 @@ class AccessControlCommandService
             subject_type: AccessIdentity::SUBJECT_MEMBER,
             subject_id: $member->id,
             priority: 30,
+            integration_type: $identity->integration_type ?: AccessControlDevice::INTEGRATION_HIKVISION,
+            provider: $identity->provider,
         );
     }
 
     public function enqueueLogsPull(AccessControlDevice $device, ?CarbonInterface $from_time = null, ?int $limit = null): AccessControlDeviceCommand
     {
         $payload = [
+            'since' => $from_time?->toIso8601String(),
             'from_time' => $from_time?->toIso8601String(),
             'limit' => $limit,
         ];
@@ -455,10 +528,19 @@ class AccessControlCommandService
         Carbon $valid_from,
         Carbon $valid_until,
     ): array {
+        $target = $this->resolveIntegrationAndProvider(
+            branch_id: $member->branch_id,
+            integration_type: $access_identity->integration_type,
+            provider: $access_identity->provider,
+            subject_type: AccessIdentity::SUBJECT_MEMBER,
+            subject_id: $member->id,
+        );
+
         $device = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $member->branch_id)
-            ->forIntegration(AccessControlDevice::INTEGRATION_HIKVISION)
+            ->forIntegration($target['integration_type'])
+            ->when($target['provider'], fn($q) => $q->forProvider($target['provider']))
             ->active()
             ->first();
 
@@ -493,6 +575,8 @@ class AccessControlCommandService
             'branch_id' => $member->branch_id,
             'member_id' => $member->id,
             'member_no' => $member->member_no,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'device_user_id' => $access_identity->device_user_id,
             'device_id' => $device->id,
             'valid_from' => $valid_from->toDateString(),
@@ -535,10 +619,19 @@ class AccessControlCommandService
         Carbon $valid_from,
         Carbon $valid_until,
     ): array {
+        $target = $this->resolveIntegrationAndProvider(
+            branch_id: $user->branch_id,
+            integration_type: $access_identity->integration_type,
+            provider: $access_identity->provider,
+            subject_type: AccessIdentity::SUBJECT_STAFF,
+            subject_id: $user->id,
+        );
+
         $device = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $user->branch_id)
-            ->forIntegration(AccessControlDevice::INTEGRATION_HIKVISION)
+            ->forIntegration($target['integration_type'])
+            ->when($target['provider'], fn($q) => $q->forProvider($target['provider']))
             ->active()
             ->first();
 
@@ -573,6 +666,8 @@ class AccessControlCommandService
             'branch_id' => $user->branch_id,
             'user_id' => $user->id,
             'user_name' => $user->name,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'device_user_id' => $access_identity->device_user_id,
             'device_id' => $device->id,
             'valid_from' => $valid_from->toDateString(),
@@ -588,9 +683,22 @@ class AccessControlCommandService
     /**
      * Enqueue disable command for a staff member.
      */
-    public function enqueueDisableFingerprintForStaff(User $user, User $actor): array
+    public function enqueueDisableFingerprintForStaff(
+        User $user,
+        User $actor,
+        ?string $integration_type = null,
+        ?string $provider = null,
+    ): array
     {
         $device_user_id = 'STAFF-' . $user->id;
+
+        $target = $this->resolveIntegrationAndProvider(
+            branch_id: $user->branch_id,
+            integration_type: $integration_type,
+            provider: $provider,
+            subject_type: AccessIdentity::SUBJECT_STAFF,
+            subject_id: $user->id,
+        );
 
         // Use last week for both valid_from and valid_to to ensure user is clearly expired
         $last_week = Carbon::now()->subWeek()->startOfDay();
@@ -603,6 +711,8 @@ class AccessControlCommandService
             'user_id' => $user->id,
             'user_name' => $user->name,
             'device_user_id' => $device_user_id,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'actor_user_id' => $actor->id,
             'valid_from' => $valid_from,
             'valid_to' => $valid_to,
@@ -611,17 +721,32 @@ class AccessControlCommandService
         return $this->enqueueAccessSetValidityForStaff($user, $valid_from, $valid_to, [
             'user_name' => $user->name,
             'device_user_id' => $device_user_id,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'actor_user_id' => $actor->id,
             'valid_from' => $valid_from,
-        ]);
+        ], $target['integration_type'], $target['provider']);
     }
 
     /**
      * Enqueue enable command for a staff member (long-term access).
      */
-    public function enqueueEnableFingerprintForStaff(User $user, User $actor): array
+    public function enqueueEnableFingerprintForStaff(
+        User $user,
+        User $actor,
+        ?string $integration_type = null,
+        ?string $provider = null,
+    ): array
     {
         $device_user_id = 'STAFF-' . $user->id;
+
+        $target = $this->resolveIntegrationAndProvider(
+            branch_id: $user->branch_id,
+            integration_type: $integration_type,
+            provider: $provider,
+            subject_type: AccessIdentity::SUBJECT_STAFF,
+            subject_id: $user->id,
+        );
 
         // Staff have long-term access (10 years)
         $valid_from = Carbon::now()->subMinutes(1)->format('Y-m-d H:i:s');
@@ -633,6 +758,8 @@ class AccessControlCommandService
             'user_id' => $user->id,
             'user_name' => $user->name,
             'device_user_id' => $device_user_id,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'actor_user_id' => $actor->id,
             'valid_from' => $valid_from,
             'valid_to' => $valid_to,
@@ -641,9 +768,11 @@ class AccessControlCommandService
         return $this->enqueueAccessSetValidityForStaff($user, $valid_from, $valid_to, [
             'user_name' => $user->name,
             'device_user_id' => $device_user_id,
+            'integration_type' => $target['integration_type'],
+            'provider' => $target['provider'],
             'actor_user_id' => $actor->id,
             'valid_from' => $valid_from,
-        ]);
+        ], $target['integration_type'], $target['provider']);
     }
 
     /**
@@ -651,14 +780,30 @@ class AccessControlCommandService
      *
      * @return array<int, string> created command UUIDs
      */
-    public function enqueueAccessSetValidityForStaff(User $user, ?string $valid_from, ?string $valid_to, array $log_context = []): array
+    public function enqueueAccessSetValidityForStaff(
+        User $user,
+        ?string $valid_from,
+        ?string $valid_to,
+        array $log_context = [],
+        ?string $integration_type = null,
+        ?string $provider = null,
+    ): array
     {
         $device_user_id = 'STAFF-' . $user->id;
+
+        $target = $this->resolveIntegrationAndProvider(
+            branch_id: $user->branch_id,
+            integration_type: $integration_type,
+            provider: $provider,
+            subject_type: AccessIdentity::SUBJECT_STAFF,
+            subject_id: $user->id,
+        );
 
         $devices = AccessControlDevice::query()
             ->withoutBranchScope()
             ->where('branch_id', $user->branch_id)
-            ->forIntegration(AccessControlDevice::INTEGRATION_HIKVISION)
+            ->forIntegration($target['integration_type'])
+            ->when($target['provider'], fn($q) => $q->forProvider($target['provider']))
             ->active()
             ->get();
 
@@ -690,6 +835,8 @@ class AccessControlCommandService
                 'device_id' => $device->id,
                 'branch_id' => $device->branch_id,
                 'user_id' => $user->id,
+                'integration_type' => $target['integration_type'],
+                'provider' => $target['provider'],
                 'valid_to' => $valid_to,
                 ...$log_context,
             ]);
@@ -714,6 +861,95 @@ class AccessControlCommandService
             subject_type: AccessIdentity::SUBJECT_STAFF,
             subject_id: $user->id,
             priority: 30,
+            integration_type: $identity->integration_type ?: AccessControlDevice::INTEGRATION_HIKVISION,
+            provider: $identity->provider,
         );
+    }
+
+    /**
+     * @return array{integration_type:string,provider:string}
+     */
+    public function resolveIntegrationAndProvider(
+        int $branch_id,
+        ?string $integration_type = null,
+        ?string $provider = null,
+        ?string $subject_type = null,
+        ?int $subject_id = null,
+    ): array {
+        $resolved_provider = $provider !== null && trim($provider) !== ''
+            ? AccessControlDevice::normalizeProvider($provider)
+            : null;
+
+        $resolved_integration = $integration_type !== null && trim($integration_type) !== ''
+            ? $integration_type
+            : null;
+
+        if ($resolved_integration === null && $resolved_provider !== null) {
+            $resolved_integration = AccessControlDevice::integrationTypeForProvider($resolved_provider);
+        }
+
+        if ($resolved_integration === null && $subject_type && $subject_id) {
+            $identity = AccessIdentity::query()
+                ->withoutBranchScope()
+                ->where('branch_id', $branch_id)
+                ->where('subject_type', $subject_type)
+                ->where('subject_id', $subject_id)
+                ->orderByDesc('is_active')
+                ->latest('id')
+                ->first();
+
+            if ($identity) {
+                $resolved_integration = $identity->integration_type ?: null;
+                if ($resolved_provider === null) {
+                    $resolved_provider = $identity->provider ?: null;
+                }
+            }
+        }
+
+        if ($resolved_integration === null || $resolved_provider === null) {
+            $active_devices = AccessControlDevice::query()
+                ->withoutBranchScope()
+                ->where('branch_id', $branch_id)
+                ->active()
+                ->latest('id')
+                ->get(['integration_type', 'provider']);
+
+            if ($active_devices->isNotEmpty()) {
+                if ($resolved_integration === null) {
+                    $integration_types = $active_devices
+                        ->pluck('integration_type')
+                        ->filter()
+                        ->unique()
+                        ->values();
+
+                    $resolved_integration = $integration_types->count() === 1
+                        ? (string) $integration_types->first()
+                        : AccessControlDevice::INTEGRATION_HIKVISION;
+                }
+
+                if ($resolved_provider === null) {
+                    $resolved_provider = $active_devices
+                        ->firstWhere('integration_type', $resolved_integration)
+                        ?->provider;
+                }
+            }
+        }
+
+        $resolved_integration = $resolved_integration ?: AccessControlDevice::INTEGRATION_HIKVISION;
+        $resolved_provider = $resolved_provider
+            ? AccessControlDevice::normalizeProvider($resolved_provider)
+            : $this->defaultProviderForIntegration($resolved_integration);
+
+        return [
+            'integration_type' => $resolved_integration,
+            'provider' => $resolved_provider,
+        ];
+    }
+
+    private function defaultProviderForIntegration(string $integration_type): string
+    {
+        return $integration_type === AccessControlDevice::INTEGRATION_ZKTECO
+            ? AccessControlDevice::PROVIDER_ZKTECO_ZKBIO
+            : AccessControlDevice::PROVIDER_HIKVISION_AGENT;
     }
 }

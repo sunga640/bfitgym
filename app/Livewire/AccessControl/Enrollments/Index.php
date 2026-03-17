@@ -206,7 +206,7 @@ class Index extends Component
         // Get enrollments
         $enrollments = AccessControlAgentEnrollment::query()
             ->forIntegration($this->integration_type)
-            ->forProvider($this->provider_filter)
+            ->whereIn('provider', AccessControlDevice::providerAliases($this->provider_filter))
             ->with(['createdBy', 'agent', 'usedByAgent', 'devices'])
             ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
             ->when($this->search, fn($q) => $q->where(function ($q) {
@@ -226,7 +226,7 @@ class Index extends Component
         $available_devices = AccessControlDevice::query()
             ->when($branch_id, fn($q) => $q->where('branch_id', $branch_id))
             ->forIntegration($this->integration_type)
-            ->when($this->provider_filter, fn($q) => $q->forProvider($this->provider_filter))
+            ->whereIn('provider', AccessControlDevice::providerAliases($this->provider_filter))
             ->where('status', AccessControlDevice::STATUS_ACTIVE)
             ->orderBy('name')
             ->get();
@@ -243,7 +243,7 @@ class Index extends Component
     {
         return AccessControlAgentEnrollment::query()
             ->forIntegration($this->integration_type)
-            ->forProvider($this->provider_filter)
+            ->whereIn('provider', AccessControlDevice::providerAliases($this->provider_filter))
             ->findOrFail($enrollment_id);
     }
 }

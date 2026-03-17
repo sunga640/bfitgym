@@ -11,7 +11,7 @@ use Livewire\Attributes\Title;
 class Index extends \App\Livewire\AccessControl\Enrollments\Index
 {
     public string $integration_type = AccessControlDevice::INTEGRATION_ZKTECO;
-    public string $provider_filter = AccessControlDevice::PROVIDER_ZKTECO_AGENT;
+    public string $provider_filter = AccessControlDevice::PROVIDER_ZKTECO_ZKBIO;
     public string $integration_label = 'ZKTeco';
     public string $route_base = 'zkteco';
 }

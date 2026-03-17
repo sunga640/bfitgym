@@ -3,7 +3,6 @@
 namespace App\Services\AccessControl;
 
 use App\Models\AccessIdentity;
-use App\Models\AccessControlDevice;
 use App\Models\Member;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -43,12 +42,17 @@ class AccessControlService
     ): array {
         $branch_id = $member->branch_id;
         $command_service = app(AccessControlCommandService::class);
+        $target = $command_service->resolveIntegrationAndProvider(
+            branch_id: $branch_id,
+            subject_type: AccessIdentity::SUBJECT_MEMBER,
+            subject_id: $member->id,
+        );
 
         // Check if member already has an AccessIdentity (including soft-deleted)
         $existing_identity = AccessIdentity::withTrashed()
             ->withoutBranchScope()
             ->where('branch_id', $branch_id)
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
+            ->where('integration_type', $target['integration_type'])
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
             ->first();
@@ -67,6 +71,8 @@ class AccessControlService
                         $member,
                         $validity['start_date']?->toIso8601String(),
                         $validity['end_date']?->copy()->endOfDay()->toIso8601String(),
+                        integration_type: $target['integration_type'],
+                        provider: $target['provider'],
                     );
                 }
 
@@ -104,8 +110,8 @@ class AccessControlService
             // Create AccessIdentity
             $identity = AccessIdentity::create([
                 'branch_id' => $branch_id,
-                'integration_type' => AccessControlDevice::INTEGRATION_HIKVISION,
-                'provider' => AccessControlDevice::PROVIDER_HIKVISION_AGENT,
+                'integration_type' => $target['integration_type'],
+                'provider' => $target['provider'],
                 'subject_type' => AccessIdentity::SUBJECT_MEMBER,
                 'subject_id' => $member->id,
                 'device_user_id' => $device_user_id,
@@ -118,6 +124,8 @@ class AccessControlService
                 $member,
                 $validity['start_date']?->toIso8601String(),
                 $validity['end_date']?->copy()->endOfDay()->toIso8601String(),
+                integration_type: $target['integration_type'],
+                provider: $target['provider'],
             );
 
             DB::commit();
@@ -179,12 +187,7 @@ class AccessControlService
      */
     public function removeMemberFingerprint(Member $member): array
     {
-        $identity = AccessIdentity::query()
-            ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
-            ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
-            ->where('subject_id', $member->id)
-            ->first();
+        $identity = $this->getMemberIdentity($member);
 
         if (!$identity) {
             return [
@@ -233,13 +236,10 @@ class AccessControlService
      */
     public function updateMemberValidity(Member $member): array
     {
-        $identity = AccessIdentity::query()
-            ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
-            ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
-            ->where('subject_id', $member->id)
-            ->active()
-            ->first();
+        $identity = $this->getMemberIdentity($member);
+        if ($identity && !$identity->is_active) {
+            $identity = null;
+        }
 
         if (!$identity) {
             return [
@@ -261,6 +261,8 @@ class AccessControlService
             $member,
             $validity['start_date']?->toIso8601String(),
             $validity['end_date']?->copy()->endOfDay()->toIso8601String(),
+            integration_type: $identity->integration_type,
+            provider: $identity->provider,
         );
 
         $validity_end_date = $validity['end_date']->format('d M Y');
@@ -283,12 +285,7 @@ class AccessControlService
      */
     public function enableMemberFingerprint(Member $member): array
     {
-        $identity = AccessIdentity::query()
-            ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
-            ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
-            ->where('subject_id', $member->id)
-            ->first();
+        $identity = $this->getMemberIdentity($member);
 
         if (!$identity) {
             return [
@@ -319,6 +316,8 @@ class AccessControlService
                 $member,
                 $validity['start_date']?->toIso8601String(),
                 $validity['end_date']?->copy()->endOfDay()->toIso8601String(),
+                integration_type: $identity->integration_type,
+                provider: $identity->provider,
             );
 
             $identity->update(['is_active' => true]);
@@ -354,12 +353,7 @@ class AccessControlService
      */
     public function disableMemberFingerprint(Member $member): array
     {
-        $identity = AccessIdentity::query()
-            ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
-            ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
-            ->where('subject_id', $member->id)
-            ->first();
+        $identity = $this->getMemberIdentity($member);
 
         if (!$identity) {
             return [
@@ -382,6 +376,8 @@ class AccessControlService
                 $member,
                 null,
                 $yesterday_end,
+                integration_type: $identity->integration_type,
+                provider: $identity->provider,
             );
 
             $identity->update(['is_active' => false]);
@@ -423,7 +419,6 @@ class AccessControlService
         // Get all active access identities for members (don't use ->with('member') due to relationship issue)
         $active_identities = AccessIdentity::query()
             ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('is_active', true)
             ->get();
@@ -469,13 +464,7 @@ class AccessControlService
      */
     public function hasFingerprintAccess(Member $member): bool
     {
-        return AccessIdentity::query()
-            ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
-            ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
-            ->where('subject_id', $member->id)
-            ->active()
-            ->exists();
+        return $this->getMemberIdentity($member)?->is_active ?? false;
     }
 
     /**
@@ -483,11 +472,20 @@ class AccessControlService
      */
     public function getMemberIdentity(Member $member): ?AccessIdentity
     {
+        $target = app(AccessControlCommandService::class)->resolveIntegrationAndProvider(
+            branch_id: $member->branch_id,
+            subject_type: AccessIdentity::SUBJECT_MEMBER,
+            subject_id: $member->id,
+        );
+
         return AccessIdentity::query()
             ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
+            ->where('branch_id', $member->branch_id)
             ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
             ->where('subject_id', $member->id)
+            ->orderByRaw("CASE WHEN integration_type = ? THEN 0 ELSE 1 END", [$target['integration_type']])
+            ->orderByDesc('is_active')
+            ->latest('id')
             ->first();
     }
 
@@ -511,11 +509,24 @@ class AccessControlService
      */
     public function getStaffIdentity(\App\Models\User $user): ?AccessIdentity
     {
+        if (!$user->branch_id) {
+            return null;
+        }
+
+        $target = app(AccessControlCommandService::class)->resolveIntegrationAndProvider(
+            branch_id: $user->branch_id,
+            subject_type: AccessIdentity::SUBJECT_STAFF,
+            subject_id: $user->id,
+        );
+
         return AccessIdentity::query()
             ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
+            ->where('branch_id', $user->branch_id)
             ->where('subject_type', AccessIdentity::SUBJECT_STAFF)
             ->where('subject_id', $user->id)
+            ->orderByRaw("CASE WHEN integration_type = ? THEN 0 ELSE 1 END", [$target['integration_type']])
+            ->orderByDesc('is_active')
+            ->latest('id')
             ->first();
     }
 
@@ -524,13 +535,7 @@ class AccessControlService
      */
     public function staffHasFingerprintAccess(\App\Models\User $user): bool
     {
-        return AccessIdentity::query()
-            ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
-            ->where('subject_type', AccessIdentity::SUBJECT_STAFF)
-            ->where('subject_id', $user->id)
-            ->active()
-            ->exists();
+        return $this->getStaffIdentity($user)?->is_active ?? false;
     }
 
     /**
@@ -538,12 +543,7 @@ class AccessControlService
      */
     public function removeStaffFingerprint(\App\Models\User $user): array
     {
-        $identity = AccessIdentity::query()
-            ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
-            ->where('subject_type', AccessIdentity::SUBJECT_STAFF)
-            ->where('subject_id', $user->id)
-            ->first();
+        $identity = $this->getStaffIdentity($user);
 
         if (!$identity) {
             return [
@@ -592,12 +592,7 @@ class AccessControlService
      */
     public function enableStaffFingerprint(\App\Models\User $user): array
     {
-        $identity = AccessIdentity::query()
-            ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
-            ->where('subject_type', AccessIdentity::SUBJECT_STAFF)
-            ->where('subject_id', $user->id)
-            ->first();
+        $identity = $this->getStaffIdentity($user);
 
         if (!$identity) {
             return [
@@ -624,6 +619,8 @@ class AccessControlService
                 $user,
                 $valid_from->format('Y-m-d H:i:s'),
                 $valid_until->endOfDay()->format('Y-m-d H:i:s'),
+                integration_type: $identity->integration_type,
+                provider: $identity->provider,
             );
 
             $identity->update(['is_active' => true, 'valid_until' => $valid_until]);
@@ -656,12 +653,7 @@ class AccessControlService
      */
     public function disableStaffFingerprint(\App\Models\User $user): array
     {
-        $identity = AccessIdentity::query()
-            ->withoutBranchScope()
-            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
-            ->where('subject_type', AccessIdentity::SUBJECT_STAFF)
-            ->where('subject_id', $user->id)
-            ->first();
+        $identity = $this->getStaffIdentity($user);
 
         if (!$identity) {
             return [
@@ -684,6 +676,8 @@ class AccessControlService
                 $user,
                 null,
                 $yesterday_end,
+                integration_type: $identity->integration_type,
+                provider: $identity->provider,
             );
 
             $identity->update(['is_active' => false]);

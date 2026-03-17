@@ -102,6 +102,12 @@ class Show extends Component
                 return;
             }
 
+            $target = app(AccessControlCommandService::class)->resolveIntegrationAndProvider(
+                branch_id: $this->member->branch_id,
+                subject_type: AccessIdentity::SUBJECT_MEMBER,
+                subject_id: $this->member->id,
+            );
+
             $valid_from = now();
             $valid_until = $active_subscription->end_date;
 
@@ -109,6 +115,7 @@ class Show extends Component
             // SoftDeletes only sets deleted_at, but unique constraint ignores it
             AccessIdentity::withTrashed()
                 ->where('branch_id', $this->member->branch_id)
+                ->where('integration_type', $target['integration_type'])
                 ->where(function ($query) use ($device_user_id) {
                     $query->where('device_user_id', $device_user_id)
                         ->orWhere(function ($q) {
@@ -121,6 +128,8 @@ class Show extends Component
             // Create fresh AccessIdentity (active immediately - fingerprint added later via device UI)
             $access_identity = AccessIdentity::create([
                 'branch_id' => $this->member->branch_id,
+                'integration_type' => $target['integration_type'],
+                'provider' => $target['provider'],
                 'device_user_id' => $device_user_id,
                 'subject_type' => AccessIdentity::SUBJECT_MEMBER,
                 'subject_id' => $this->member->id,
@@ -215,7 +224,12 @@ class Show extends Component
 
             // Enqueue command to update device
             $command_uuids = app(AccessControlCommandService::class)
-                ->enqueueEnableFingerprintForMember($this->member, auth()->user());
+                ->enqueueEnableFingerprintForMember(
+                    $this->member,
+                    auth()->user(),
+                    $this->access_identity->integration_type,
+                    $this->access_identity->provider
+                );
 
             $access_logger->info('device_access_enabled', [
                 'member_id' => $this->member->id,
@@ -284,7 +298,12 @@ class Show extends Component
 
             // Enqueue command to update device
             $command_uuids = app(AccessControlCommandService::class)
-                ->enqueueDisableFingerprintForMember($this->member, auth()->user());
+                ->enqueueDisableFingerprintForMember(
+                    $this->member,
+                    auth()->user(),
+                    $this->access_identity->integration_type,
+                    $this->access_identity->provider
+                );
 
             $access_logger->info('device_access_disabled', [
                 'member_id' => $this->member->id,

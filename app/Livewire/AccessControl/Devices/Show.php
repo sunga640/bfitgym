@@ -148,12 +148,22 @@ class Show extends Component
 
     public function render(): View
     {
+        $device_provider_aliases = AccessControlDevice::providerAliases(
+            $this->device->provider ?: ($this->integration_type === AccessControlDevice::INTEGRATION_ZKTECO
+                ? AccessControlDevice::PROVIDER_ZKTECO_ZKBIO
+                : AccessControlDevice::PROVIDER_HIKVISION_AGENT)
+        );
+
         // Available agents for assignment
         $available_agents = AccessControlAgent::query()
             ->where('branch_id', $this->device->branch_id)
             ->when(
                 $this->integration_type === AccessControlDevice::INTEGRATION_ZKTECO,
-                fn($q) => $q->whereJsonContains('supported_providers', AccessControlDevice::PROVIDER_ZKTECO_AGENT),
+                fn($q) => $q->where(function ($inner) use ($device_provider_aliases) {
+                    foreach ($device_provider_aliases as $provider_alias) {
+                        $inner->orWhereJsonContains('supported_providers', $provider_alias);
+                    }
+                }),
                 fn($q) => $q->where(function ($inner) {
                     $inner->whereNull('supported_providers')
                         ->orWhereJsonContains('supported_providers', AccessControlDevice::PROVIDER_HIKVISION_AGENT);

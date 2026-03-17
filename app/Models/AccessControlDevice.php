@@ -286,7 +286,19 @@ class AccessControlDevice extends Model
         $normalized = self::normalizeProvider($provider);
 
         if ($normalized === self::PROVIDER_ZKTECO_ZKBIO) {
-            return [self::PROVIDER_ZKTECO_ZKBIO, self::PROVIDER_ZKBIO_PLATFORM];
+            return [
+                self::PROVIDER_ZKTECO_ZKBIO,
+                self::PROVIDER_ZKBIO_PLATFORM,
+                self::PROVIDER_ZKTECO_AGENT,
+            ];
+        }
+
+        if ($normalized === self::PROVIDER_ZKTECO_AGENT) {
+            return [
+                self::PROVIDER_ZKTECO_AGENT,
+                self::PROVIDER_ZKTECO_ZKBIO,
+                self::PROVIDER_ZKBIO_PLATFORM,
+            ];
         }
 
         return [$normalized];

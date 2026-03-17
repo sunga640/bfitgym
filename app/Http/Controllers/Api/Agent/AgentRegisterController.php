@@ -42,7 +42,10 @@ class AgentRegisterController extends Controller
         $devices = AccessControlDevice::query()
             ->where('branch_id', $agent->branch_id)
             ->forIntegration($enrollment->integration_type ?? AccessControlDevice::INTEGRATION_HIKVISION)
-            ->when($enrollment->provider, fn($q) => $q->forProvider($enrollment->provider))
+            ->when(
+                $enrollment->provider,
+                fn($q) => $q->whereIn('provider', AccessControlDevice::providerAliases((string) $enrollment->provider))
+            )
             ->get([
                 'id',
                 'name',
