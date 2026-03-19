@@ -229,6 +229,26 @@ class Branch extends Model
         return $this->hasMany(ZktecoMemberMap::class);
     }
 
+    public function cvSecurityConnections(): HasMany
+    {
+        return $this->hasMany(CvSecurityConnection::class, 'branch_id');
+    }
+
+    public function cvSecurityAgents(): HasMany
+    {
+        return $this->hasMany(CvSecurityAgent::class, 'branch_id');
+    }
+
+    public function cvSecurityEvents(): HasMany
+    {
+        return $this->hasMany(CvSecurityEvent::class, 'branch_id');
+    }
+
+    public function cvSecuritySyncItems(): HasMany
+    {
+        return $this->hasMany(CvSecurityMemberSyncItem::class, 'branch_id');
+    }
+
     /**
      * Get all expense categories for this branch.
      */

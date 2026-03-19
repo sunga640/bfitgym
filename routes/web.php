@@ -281,12 +281,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/identities/{identity}/edit', \App\Livewire\AccessIdentities\Form::class)->name('identities.edit');
     });
 
-    // ZKTeco (ZKBio control-plane integration)
+    // ZKTeco CVSecurity (local-agent bridge integration)
     Route::prefix('zkteco')->name('zkteco.')->group(function () {
-        Route::get('/', \App\Livewire\Zkteco\Overview::class)->name('overview');
-        Route::get('/logs', \App\Livewire\Zkteco\Logs\Index::class)->name('logs.index');
-        Route::get('/events', \App\Livewire\Zkteco\Logs\Index::class)->name('events.index');
-        Route::get('/settings', \App\Livewire\Zkteco\Settings::class)->name('settings');
+        Route::get('/', \App\Livewire\CvSecurity\Connections\Index::class)->name('overview');
+        Route::get('/connections', \App\Livewire\CvSecurity\Connections\Index::class)->name('connections.index');
+        Route::get('/connections/create', \App\Livewire\CvSecurity\Connections\Form::class)->name('connections.create');
+        Route::get('/connections/{connection}', \App\Livewire\CvSecurity\Connections\Show::class)->name('connections.show');
+        Route::get('/connections/{connection}/edit', \App\Livewire\CvSecurity\Connections\Form::class)->name('connections.edit');
+        Route::get('/events', \App\Livewire\CvSecurity\Events\Index::class)->name('events.index');
+
+        // Keep legacy route names alive, but route everything to the new CVSecurity flow.
+        Route::redirect('/logs', '/zkteco/events')->name('logs.index');
+        Route::redirect('/settings', '/zkteco/connections')->name('settings');
+        Route::redirect('/devices', '/zkteco/connections')->name('devices.index');
+        Route::redirect('/devices/create', '/zkteco/connections/create')->name('devices.create');
+        Route::redirect('/devices/{device}', '/zkteco/connections')->name('devices.show');
+        Route::redirect('/devices/{device}/edit', '/zkteco/connections')->name('devices.edit');
+        Route::redirect('/agents', '/zkteco/connections')->name('agents.index');
+        Route::redirect('/agents/{agent}', '/zkteco/connections')->name('agents.show');
+        Route::redirect('/enrollments', '/zkteco/connections')->name('enrollments.index');
+        Route::redirect('/identities', '/zkteco/connections')->name('identities.index');
+        Route::redirect('/identities/create', '/zkteco/connections')->name('identities.create');
+        Route::redirect('/identities/{identity}/edit', '/zkteco/connections')->name('identities.edit');
     });
 
     /*

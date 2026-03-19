@@ -52,18 +52,13 @@ Schedule::command('access:disable-expired')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/access-disable-expired.log'));
 
-// ZKTeco/ZKBio health + sync tasks (shared-hosting friendly via schedule:run)
-Schedule::command('zkteco:health-check')
-    ->everyTenMinutes()
-    ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/zkteco-health-check.log'));
-
-Schedule::command('zkteco:sync-events')
+// CVSecurity integration jobs (shared-hosting friendly via schedule:run)
+Schedule::command('cvsecurity:prepare-member-sync')
     ->everyFiveMinutes()
     ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/zkteco-events-sync.log'));
+    ->appendOutputTo(storage_path('logs/cvsecurity-member-sync.log'));
 
-Schedule::command('zkteco:sync-personnel')
-    ->hourly()
+Schedule::command('cvsecurity:mark-agents-offline')
+    ->everyFiveMinutes()
     ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/zkteco-personnel-sync.log'));
+    ->appendOutputTo(storage_path('logs/cvsecurity-agent-status.log'));

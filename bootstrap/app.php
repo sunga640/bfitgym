@@ -15,6 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Agent API middleware aliases
         $middleware->alias([
             'agent.auth' => \App\Http\Middleware\AgentAuthMiddleware::class,
+            'cvsecurity.agent.auth' => \App\Http\Middleware\CvSecurityAgentAuthMiddleware::class,
+            'cvsecurity.agent.signature' => \App\Http\Middleware\CvSecurityAgentSignatureMiddleware::class,
         ]);
 
         $middleware->web(append: [

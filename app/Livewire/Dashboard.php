@@ -2,16 +2,16 @@
 
 namespace App\Livewire;
 
-use App\Integrations\Zkteco\Repositories\ZktecoConnectionRepository;
-use App\Integrations\Zkteco\Services\ZktecoConnectionService;
-use App\Integrations\Zkteco\Services\ZktecoHealthService;
 use App\Models\AccessControlDevice;
 use App\Models\AccessLog;
 use App\Models\BranchProduct;
+use App\Models\CvSecurityConnection;
 use App\Models\Member;
 use App\Models\MemberSubscription;
 use App\Models\PaymentTransaction;
 use App\Models\PosSale;
+use App\Services\CvSecurity\ConnectionService as CvSecurityConnectionService;
+use App\Services\CvSecurity\HealthService as CvSecurityHealthService;
 use App\Services\Inventory\InventoryService;
 use App\Services\Revenue\RevenueReportService;
 use App\Support\Integrations\IntegrationPermission;
@@ -288,12 +288,11 @@ class Dashboard extends Component
             return null;
         }
 
-        return app(ZktecoHealthService::class)->healthForBranch(current_branch_id());
+        return app(CvSecurityHealthService::class)->healthForBranch(current_branch_id());
     }
 
     public function retryZktecoHealthCheck(
-        ZktecoConnectionRepository $connections,
-        ZktecoConnectionService $service
+        CvSecurityConnectionService $service
     ): void {
         if (!IntegrationPermission::canManage(auth()->user(), AccessControlDevice::INTEGRATION_ZKTECO)) {
             return;
@@ -305,14 +304,19 @@ class Dashboard extends Component
             return;
         }
 
-        $connection = $connections->forBranch($branch_id);
+        $connection = CvSecurityConnection::query()
+            ->withoutBranchScope()
+            ->where('branch_id', $branch_id)
+            ->latest('id')
+            ->first();
+
         if (!$connection) {
             session()->flash('dashboard_error', __('Configure ZKTeco connection in settings first.'));
             return;
         }
 
-        $result = $service->testConnection($connection, auth()->user());
-        session()->flash($result->ok ? 'dashboard_success' : 'dashboard_error', $result->message);
+        $service->requestAgentTest($connection, auth()->user());
+        session()->flash('dashboard_success', __('Connection test requested. Agent will execute it shortly.'));
     }
 
     public function render(): View

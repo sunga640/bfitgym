@@ -445,10 +445,10 @@
                     <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
-                    <a href="{{ route('zkteco.overview') }}" class="side-child {{ request()->routeIs('zkteco.overview') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Overview') }}</a>
-                    <a href="{{ route('zkteco.logs.index') }}" class="side-child {{ request()->routeIs('zkteco.logs.*', 'zkteco.events.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Logs') }}</a>
-                    @canany(['manage zkteco settings', 'manage zkteco'])
-                        <a href="{{ route('zkteco.settings') }}" class="side-child {{ request()->routeIs('zkteco.settings') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Settings') }}</a>
+                    <a href="{{ route('zkteco.overview') }}" class="side-child {{ request()->routeIs('zkteco.connections.*', 'zkteco.overview') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Integrations') }}</a>
+                    <a href="{{ route('zkteco.events.index') }}" class="side-child {{ request()->routeIs('zkteco.events.*', 'zkteco.logs.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Events') }}</a>
+                    @canany(['view zkteco', 'manage zkteco'])
+                        <a href="{{ route('zkteco.connections.create') }}" class="side-child {{ request()->routeIs('zkteco.connections.create') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Add Integration') }}</a>
                     @endcanany
                 </div>
             </details>

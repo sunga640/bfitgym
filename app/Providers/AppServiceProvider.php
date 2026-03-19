@@ -10,6 +10,8 @@ use App\Models\Branch;
 use App\Models\ClassBooking;
 use App\Models\ClassSession;
 use App\Models\ClassType;
+use App\Models\CvSecurityConnection;
+use App\Models\CvSecurityEvent;
 use App\Models\Equipment;
 use App\Models\EquipmentAllocation;
 use App\Models\Insurer;
@@ -34,6 +36,8 @@ use App\Policies\BranchPolicy;
 use App\Policies\ClassBookingPolicy;
 use App\Policies\ClassSessionPolicy;
 use App\Policies\ClassTypePolicy;
+use App\Policies\CvSecurityConnectionPolicy;
+use App\Policies\CvSecurityEventPolicy;
 use App\Policies\EquipmentAllocationPolicy;
 use App\Policies\EquipmentPolicy;
 use App\Policies\InsurerPolicy;
@@ -81,6 +85,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(120)->by($agent_uuid !== '' ? $agent_uuid : $request->ip());
         });
 
+        RateLimiter::for('cvsecurity-agent', function (Request $request) {
+            $agent_uuid = (string) $request->header('X-CV-Agent-UUID', '');
+
+            return Limit::perMinute(180)->by($agent_uuid !== '' ? $agent_uuid : $request->ip());
+        });
+
         // Register policies
         Gate::policy(Branch::class, BranchPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
@@ -102,6 +112,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ZktecoConnection::class, ZktecoConnectionPolicy::class);
         Gate::policy(ZktecoDevice::class, ZktecoDevicePolicy::class);
         Gate::policy(ZktecoAccessEvent::class, ZktecoAccessEventPolicy::class);
+        Gate::policy(CvSecurityConnection::class, CvSecurityConnectionPolicy::class);
+        Gate::policy(CvSecurityEvent::class, CvSecurityEventPolicy::class);
 
         // Model observers (must not call device/network; only enqueue outbox commands)
         Member::observe(MemberObserver::class);
