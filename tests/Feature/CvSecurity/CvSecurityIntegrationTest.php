@@ -65,8 +65,14 @@ it('creates cvsecurity connection settings via livewire form with encrypted secr
 
     $row = DB::table('cvsecurity_connections')->where('name', 'Main CVSecurity')->first();
     expect($row)->not()->toBeNull();
+    expect($row->cv_password_encrypted)->not()->toBeNull();
+    expect($row->cv_api_token_encrypted)->not()->toBeNull();
     expect($row->cv_password_encrypted)->not()->toBe('secret-password');
     expect($row->cv_api_token_encrypted)->not()->toBe('api-secret-token');
+
+    $connection = CvSecurityConnection::query()->withoutBranchScope()->where('id', $row->id)->firstOrFail();
+    expect($connection->cv_password)->toBe('secret-password');
+    expect($connection->cv_api_token)->toBe('api-secret-token');
 });
 
 it('pairs an agent with a one-time pairing token', function () {
@@ -90,6 +96,8 @@ it('pairs an agent with a one-time pairing token', function () {
         'agent_name' => 'Reception Agent',
         'os' => 'windows',
         'app_version' => '1.0.0',
+        'cv_password' => 'Gym@1234',
+        'cv_api_token' => 'cv-token-123',
     ]);
 
     $response->assertOk()
@@ -105,6 +113,66 @@ it('pairs an agent with a one-time pairing token', function () {
     $agent = CvSecurityAgent::query()->where('uuid', $response->json('agent_uuid'))->first();
     expect($agent)->not()->toBeNull();
     expect($agent->auth_token_hash)->toBe(hash('sha256', (string) $response->json('agent_token')));
+
+    $connection->refresh();
+    expect($connection->cv_password)->toBe('Gym@1234');
+    expect($connection->cv_api_token)->toBe('cv-token-123');
+});
+
+it('re-pairing with an existing agent uuid reuses agent instead of failing with duplicate key', function () {
+    $branch = Branch::factory()->create();
+    $admin = User::factory()->create(['branch_id' => $branch->id]);
+    $admin->givePermissionTo('manage zkteco settings');
+
+    $first_connection = CvSecurityConnection::query()->withoutBranchScope()->create([
+        'branch_id' => $branch->id,
+        'name' => 'Branch RePair A',
+        'cv_base_url' => 'http://192.168.1.50',
+        'status' => CvSecurityConnection::STATUS_PENDING,
+        'pairing_status' => CvSecurityConnection::PAIRING_UNPAIRED,
+        'created_by' => $admin->id,
+    ]);
+
+    $second_connection = CvSecurityConnection::query()->withoutBranchScope()->create([
+        'branch_id' => $branch->id,
+        'name' => 'Branch RePair B',
+        'cv_base_url' => 'http://192.168.1.51',
+        'status' => CvSecurityConnection::STATUS_PENDING,
+        'pairing_status' => CvSecurityConnection::PAIRING_UNPAIRED,
+        'created_by' => $admin->id,
+    ]);
+
+    $agent_uuid = (string) \Illuminate\Support\Str::uuid();
+
+    $first_token = app(PairingService::class)->generateToken($first_connection, $admin, 30);
+    $first_pair = $this->postJson('/api/cvsecurity/agent/pair', [
+        'pairing_token' => $first_token['plaintext_token'],
+        'agent_uuid' => $agent_uuid,
+        'agent_name' => 'RePair Agent',
+    ])->assertOk();
+
+    $first_agent_id = CvSecurityAgent::query()->where('uuid', $agent_uuid)->value('id');
+    expect($first_agent_id)->not()->toBeNull();
+
+    $second_token = app(PairingService::class)->generateToken($second_connection, $admin, 30);
+    $second_pair = $this->postJson('/api/cvsecurity/agent/pair', [
+        'pairing_token' => $second_token['plaintext_token'],
+        'agent_uuid' => $agent_uuid,
+        'agent_name' => 'RePair Agent',
+    ])->assertOk();
+
+    expect((string) $first_pair->json('agent_uuid'))->toBe($agent_uuid);
+    expect((string) $second_pair->json('agent_uuid'))->toBe($agent_uuid);
+
+    expect(CvSecurityAgent::query()->where('uuid', $agent_uuid)->count())->toBe(1);
+
+    $agent = CvSecurityAgent::query()->where('uuid', $agent_uuid)->firstOrFail();
+    expect($agent->id)->toBe($first_agent_id);
+    expect($agent->cvsecurity_connection_id)->toBe($second_connection->id);
+
+    $first_connection->refresh();
+    expect($first_connection->status)->toBe(CvSecurityConnection::STATUS_DISCONNECTED);
+    expect($first_connection->agent_status)->toBe('offline');
 });
 
 it('accepts signed heartbeat and updates connection health', function () {

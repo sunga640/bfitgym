@@ -40,6 +40,8 @@ class CvSecurityConnection extends Model
         'cv_base_url',
         'cv_port',
         'cv_username',
+        'cv_password',
+        'cv_api_token',
         'cv_password_encrypted',
         'cv_api_token_encrypted',
         'poll_interval_seconds',
@@ -139,4 +141,3 @@ class CvSecurityConnection extends Model
         return $this->hasMany(CvSecurityActivityLog::class, 'cvsecurity_connection_id');
     }
 }
-

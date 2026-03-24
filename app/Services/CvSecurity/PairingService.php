@@ -6,6 +6,7 @@ use App\Models\CvSecurityAgent;
 use App\Models\CvSecurityConnection;
 use App\Models\CvSecurityPairingToken;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
@@ -90,8 +91,7 @@ class PairingService
             $os = trim((string) ($agent_payload['os'] ?? ''));
 
             $plaintext_auth_token = Str::random(64);
-
-            $agent = CvSecurityAgent::query()->create([
+            $agent_payload_for_save = [
                 'cvsecurity_connection_id' => $connection->id,
                 'branch_id' => $connection->branch_id,
                 'uuid' => $agent_uuid,
@@ -105,7 +105,56 @@ class PairingService
                 'paired_at' => now(),
                 'last_seen_at' => now(),
                 'last_heartbeat_at' => now(),
-            ]);
+            ];
+
+            /** @var CvSecurityAgent|null $existing_by_uuid */
+            $existing_by_uuid = CvSecurityAgent::query()
+                ->where('uuid', $agent_uuid)
+                ->lockForUpdate()
+                ->first();
+
+            $reused_existing_agent = false;
+            $previous_connection_id = null;
+
+            if ($existing_by_uuid) {
+                $reused_existing_agent = true;
+                $previous_connection_id = $existing_by_uuid->cvsecurity_connection_id;
+                $existing_by_uuid->fill($agent_payload_for_save)->save();
+                $agent = $existing_by_uuid;
+            } else {
+                try {
+                    $agent = CvSecurityAgent::query()->create($agent_payload_for_save);
+                } catch (UniqueConstraintViolationException $e) {
+                    // Last-resort race-safety: if another request created the same UUID,
+                    // reuse that row instead of failing pairing with HTTP 500.
+                    $existing_after_race = CvSecurityAgent::query()
+                        ->where('uuid', $agent_uuid)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$existing_after_race) {
+                        throw $e;
+                    }
+
+                    $reused_existing_agent = true;
+                    $previous_connection_id = $existing_after_race->cvsecurity_connection_id;
+                    $existing_after_race->fill($agent_payload_for_save)->save();
+                    $agent = $existing_after_race;
+                }
+            }
+
+            if ($reused_existing_agent
+                && $previous_connection_id
+                && (int) $previous_connection_id !== (int) $connection->id) {
+                CvSecurityConnection::query()
+                    ->where('id', $previous_connection_id)
+                    ->update([
+                        'agent_status' => 'offline',
+                        'status' => CvSecurityConnection::STATUS_DISCONNECTED,
+                        'last_error' => 'Agent UUID was re-paired to another connection.',
+                        'last_error_at' => now(),
+                    ]);
+            }
 
             $update_data = [
                 'pairing_status' => CvSecurityConnection::PAIRING_PAIRED,
@@ -153,6 +202,8 @@ class PairingService
                 context: [
                     'agent_id' => $agent->id,
                     'agent_uuid' => $agent->uuid,
+                    'reused_existing_agent' => $reused_existing_agent,
+                    'previous_connection_id' => $previous_connection_id,
                 ],
                 agent: $agent,
             );
