@@ -210,6 +210,68 @@ it('accepts signed heartbeat and updates connection health', function () {
     ]);
 });
 
+it('acknowledges requested actions on status report and clears request flags', function () {
+    $branch = Branch::factory()->create();
+    $admin = User::factory()->create(['branch_id' => $branch->id]);
+    $admin->givePermissionTo('manage zkteco settings');
+
+    $connection = CvSecurityConnection::query()->withoutBranchScope()->create([
+        'branch_id' => $branch->id,
+        'name' => 'Branch Status Ack',
+        'cv_base_url' => 'https://127.0.0.1',
+        'status' => CvSecurityConnection::STATUS_PENDING,
+        'pairing_status' => CvSecurityConnection::PAIRING_UNPAIRED,
+        'agent_test_requested' => true,
+        'agent_sync_requested' => true,
+        'agent_event_pull_requested' => true,
+        'created_by' => $admin->id,
+    ]);
+
+    $token = app(PairingService::class)->generateToken($connection, $admin, 30);
+    $pair = $this->postJson('/api/cvsecurity/agent/pair', [
+        'pairing_token' => $token['plaintext_token'],
+        'agent_name' => 'Status Ack Agent',
+    ])->assertOk();
+
+    $uuid = (string) $pair->json('agent_uuid');
+    $agent_token = (string) $pair->json('agent_token');
+
+    $payload = [
+        'cvsecurity_status' => 'reachable',
+        'ack_test_connection' => true,
+        'ack_sync_members' => true,
+        'ack_pull_events' => true,
+        'metadata' => [
+            'source' => 'test-suite',
+        ],
+    ];
+
+    $headers = cvAgentHeaders($uuid, $agent_token, 'POST', '/api/cvsecurity/agent/status/report', $payload);
+    $this->withHeaders($headers)
+        ->postJson('/api/cvsecurity/agent/status/report', $payload)
+        ->assertOk()
+        ->assertJsonPath('ok', true);
+
+    $connection->refresh();
+    expect($connection->agent_test_requested)->toBeFalse();
+    expect($connection->agent_sync_requested)->toBeFalse();
+    expect($connection->agent_event_pull_requested)->toBeFalse();
+    expect($connection->last_tested_at)->not()->toBeNull();
+
+    $this->assertDatabaseHas('cvsecurity_activity_logs', [
+        'cvsecurity_connection_id' => $connection->id,
+        'event' => 'agent_test_acknowledged',
+    ]);
+    $this->assertDatabaseHas('cvsecurity_activity_logs', [
+        'cvsecurity_connection_id' => $connection->id,
+        'event' => 'agent_sync_acknowledged',
+    ]);
+    $this->assertDatabaseHas('cvsecurity_activity_logs', [
+        'cvsecurity_connection_id' => $connection->id,
+        'event' => 'agent_event_pull_acknowledged',
+    ]);
+});
+
 it('ingests events with deduplication through signed endpoint', function () {
     $branch = Branch::factory()->create();
     $admin = User::factory()->create(['branch_id' => $branch->id]);

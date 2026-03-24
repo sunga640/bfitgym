@@ -428,6 +428,43 @@ class AgentBridgeService
                     'message' => $last_error ?: 'Connection test completed.',
                 ],
             ]);
+
+            $this->activity_logger->log(
+                connection: $connection,
+                level: 'info',
+                event: 'agent_test_acknowledged',
+                message: 'Agent acknowledged and completed requested connection test.',
+                context: [
+                    'cvsecurity_status' => $cv_status,
+                ],
+                agent: $agent,
+            );
+        }
+
+        if ($this->boolFromPayload($status_payload, 'ack_sync_members')) {
+            $this->activity_logger->log(
+                connection: $connection,
+                level: 'info',
+                event: 'agent_sync_acknowledged',
+                message: 'Agent acknowledged requested member sync.',
+                context: [
+                    'cvsecurity_status' => $cv_status,
+                ],
+                agent: $agent,
+            );
+        }
+
+        if ($this->boolFromPayload($status_payload, 'ack_pull_events')) {
+            $this->activity_logger->log(
+                connection: $connection,
+                level: 'info',
+                event: 'agent_event_pull_acknowledged',
+                message: 'Agent acknowledged requested event pull.',
+                context: [
+                    'cvsecurity_status' => $cv_status,
+                ],
+                agent: $agent,
+            );
         }
 
         if ($last_error) {
@@ -504,4 +541,3 @@ class AgentBridgeService
         return $value;
     }
 }
-
