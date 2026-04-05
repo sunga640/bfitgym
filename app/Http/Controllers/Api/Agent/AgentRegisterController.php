@@ -66,16 +66,32 @@ class AgentRegisterController extends Controller
                 'device_type' => $device->device_type,
                 'integration_type' => $device->integration_type,
                 'provider' => $device->provider,
+                'provider_key' => AccessControlDevice::canonicalProviderKey($device->provider, $device->integration_type),
                 'driver' => AccessControlDevice::driverForProvider($device->provider),
                 'branch_id' => $device->branch_id,
             ];
         })->values();
+
+        $supported_providers = collect($devices)
+            ->pluck('provider')
+            ->filter(fn ($provider) => is_string($provider) && trim($provider) !== '')
+            ->flatMap(fn (string $provider) => AccessControlDevice::providerAliases($provider))
+            ->merge($agent->providerList())
+            ->unique()
+            ->values()
+            ->all();
+
+        $agent->update([
+            'supported_providers' => $supported_providers,
+            'default_provider' => $enrollment->provider ?? ($supported_providers[0] ?? AccessControlDevice::PROVIDER_HIKVISION_AGENT),
+        ]);
 
         return response()->json([
             'agent_uuid' => $agent->uuid,
             'agent_token' => $plaintext_token, // view-once
             'integration_type' => $enrollment->integration_type ?? AccessControlDevice::INTEGRATION_HIKVISION,
             'provider' => $enrollment->provider ?? AccessControlDevice::PROVIDER_HIKVISION_AGENT,
+            'provider_key' => AccessControlDevice::canonicalProviderKey($enrollment->provider, $enrollment->integration_type),
             'driver' => AccessControlDevice::driverForProvider($enrollment->provider),
             'devices' => $devices,
             'server_time' => now()->toIso8601String(),

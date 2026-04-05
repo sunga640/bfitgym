@@ -37,6 +37,50 @@ class Member extends Model
         ];
     }
 
+    public static function normalizePhone(?string $phone): ?string
+    {
+        if ($phone === null) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', trim($phone));
+
+        if ($digits === null || $digits === '') {
+            return '';
+        }
+
+        if (str_starts_with($digits, '0')) {
+            return '255' . substr($digits, 1);
+        }
+
+        if (str_starts_with($digits, '255')) {
+            return $digits;
+        }
+
+        return $digits;
+    }
+
+    public static function normalizeEmail(?string $email): ?string
+    {
+        if ($email === null) {
+            return null;
+        }
+
+        $normalized = strtolower(trim($email));
+
+        return $normalized === '' ? null : $normalized;
+    }
+
+    public function setPhoneAttribute(?string $value): void
+    {
+        $this->attributes['phone'] = static::normalizePhone($value);
+    }
+
+    public function setEmailAttribute(?string $value): void
+    {
+        $this->attributes['email'] = static::normalizeEmail($value);
+    }
+
     // -------------------------------------------------------------------------
     // Accessors
     // -------------------------------------------------------------------------
@@ -185,4 +229,3 @@ class Member extends Model
         return $this->hasActiveSubscription() && !$this->hasActiveFingerprint();
     }
 }
-

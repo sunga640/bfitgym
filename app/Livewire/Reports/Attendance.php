@@ -3,10 +3,12 @@
 namespace App\Livewire\Reports;
 
 use App\Models\AccessControlDevice;
+use App\Models\CvSecurityEvent;
 use App\Models\ZktecoDevice;
 use App\Services\Attendance\AttendanceReportService;
 use App\Services\BranchContext;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -208,6 +210,39 @@ class Attendance extends Component
                 $options[] = [
                     'key' => AccessControlDevice::INTEGRATION_ZKTECO . ':' . $device->id,
                     'label' => 'ZKTeco - ' . $name,
+                ];
+            }
+
+            $cvsecurity_devices = CvSecurityEvent::query()
+                ->withoutBranchScope()
+                ->join('cvsecurity_connections as c', 'c.id', '=', 'cvsecurity_events.cvsecurity_connection_id')
+                ->when($branch_id, fn($query) => $query->where('cvsecurity_events.branch_id', $branch_id))
+                ->whereNotNull('cvsecurity_events.device_id')
+                ->where('cvsecurity_events.device_id', '!=', '')
+                ->groupBy('cvsecurity_events.cvsecurity_connection_id', 'cvsecurity_events.device_id')
+                ->orderBy('cvsecurity_events.device_id')
+                ->select([
+                    'cvsecurity_events.cvsecurity_connection_id',
+                    'cvsecurity_events.device_id',
+                    DB::raw('MAX(c.name) as connection_name'),
+                ])
+                ->get();
+
+            foreach ($cvsecurity_devices as $device) {
+                $key = AccessControlDevice::INTEGRATION_ZKTECO
+                    . ':cvsecurity:'
+                    . (string) $device->cvsecurity_connection_id
+                    . ':'
+                    . (string) $device->device_id;
+
+                $label = 'ZKTeco Agent - ' . (string) $device->device_id;
+                if (!empty($device->connection_name)) {
+                    $label .= ' (' . (string) $device->connection_name . ')';
+                }
+
+                $options[] = [
+                    'key' => $key,
+                    'label' => $label,
                 ];
             }
         }

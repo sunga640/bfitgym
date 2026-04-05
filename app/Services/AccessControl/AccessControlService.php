@@ -2,6 +2,7 @@
 
 namespace App\Services\AccessControl;
 
+use App\Models\AccessControlDevice;
 use App\Models\AccessIdentity;
 use App\Models\Member;
 use Illuminate\Support\Carbon;
@@ -13,18 +14,17 @@ class AccessControlService
     /**
      * Resolve the stable device_user_id for a member.
      *
-     * Cloud canonical rule:
-     * - members: device_user_id = members.member_no
+     * Canonical rules:
+     * - hikvision: random unique 6-digit numeric string (stable once assigned to AccessIdentity)
+     * - zkteco: members.member_no
      */
-    public function getMemberDeviceUserId(Member $member): string
+    public function getMemberDeviceUserId(
+        Member $member,
+        string $integration_type = AccessControlDevice::INTEGRATION_HIKVISION
+    ): string
     {
-        $device_user_id = (string) ($member->member_no ?? '');
-
-        if ($device_user_id === '') {
-            throw new \RuntimeException('Member is missing member_no, cannot build device_user_id.');
-        }
-
-        return $device_user_id;
+        return app(AccessControlCommandService::class)
+            ->resolveMemberDeviceUserIdForIntegration($member, $integration_type);
     }
 
     /**
@@ -47,6 +47,7 @@ class AccessControlService
             subject_type: AccessIdentity::SUBJECT_MEMBER,
             subject_id: $member->id,
         );
+        $expected_device_user_id = $this->getMemberDeviceUserId($member, $target['integration_type']);
 
         // Check if member already has an AccessIdentity (including soft-deleted)
         $existing_identity = AccessIdentity::withTrashed()
@@ -58,6 +59,11 @@ class AccessControlService
             ->first();
 
         if ($existing_identity) {
+            if ((string) $existing_identity->device_user_id !== $expected_device_user_id) {
+                $existing_identity->update(['device_user_id' => $expected_device_user_id]);
+                $existing_identity->refresh();
+            }
+
             // If it was soft-deleted, restore it
             if ($existing_identity->trashed()) {
                 $existing_identity->restore();
@@ -104,8 +110,7 @@ class AccessControlService
         try {
             DB::beginTransaction();
 
-            // Stable device user ID (member_no)
-            $device_user_id = $this->getMemberDeviceUserId($member);
+            $device_user_id = $expected_device_user_id;
 
             // Create AccessIdentity
             $identity = AccessIdentity::create([

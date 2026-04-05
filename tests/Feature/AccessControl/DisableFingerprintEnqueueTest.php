@@ -32,11 +32,15 @@ test('disable fingerprint enqueues access_set_validity command and writes access
         'branch_id' => $branch->id,
     ]);
 
+    $expected_device_user_id = str_pad((string) $member->id, 6, '0', STR_PAD_LEFT);
+
     AccessIdentity::create([
         'branch_id' => $branch->id,
+        'integration_type' => AccessControlDevice::INTEGRATION_HIKVISION,
+        'provider' => AccessControlDevice::PROVIDER_HIKVISION_AGENT,
         'subject_type' => AccessIdentity::SUBJECT_MEMBER,
         'subject_id' => $member->id,
-        'device_user_id' => $member->member_no,
+        'device_user_id' => $expected_device_user_id,
         'is_active' => true,
     ]);
 
@@ -57,12 +61,15 @@ test('disable fingerprint enqueues access_set_validity command and writes access
     ]);
 
     $log_path = storage_path('logs/access-test.log');
-    @unlink($log_path);
+    $log_glob = storage_path('logs/access-test*.log');
+    foreach (glob($log_glob) ?: [] as $existing_log_file) {
+        @unlink($existing_log_file);
+    }
     config(['logging.channels.access.path' => $log_path]);
 
     $this->actingAs($user);
 
-    $expected_valid_to = Carbon::yesterday()->endOfDay()->format('Y-m-d H:i:s');
+    $expected_valid_to = Carbon::now()->subWeek()->endOfDay()->format('Y-m-d H:i:s');
 
     Livewire::test(MemberShow::class, ['member' => $member])
         ->call('disableFingerprint')
@@ -78,12 +85,15 @@ test('disable fingerprint enqueues access_set_validity command and writes access
         ->firstOrFail();
 
     expect($cmd->status)->toBe(AccessControlDeviceCommand::STATUS_PENDING);
-    expect($cmd->payload['device_user_id'] ?? null)->toBe($member->member_no);
+    expect($cmd->payload['device_user_id'] ?? null)->toBe($expected_device_user_id);
     expect($cmd->payload['valid_to'] ?? null)->toBe($expected_valid_to);
 
-    expect(is_file($log_path))->toBeTrue();
-    $log_contents = (string) file_get_contents($log_path);
+    $log_files = glob($log_glob) ?: [];
+    expect($log_files)->not->toBeEmpty();
+
+    $log_contents = collect($log_files)
+        ->map(fn($file_path) => (string) file_get_contents($file_path))
+        ->implode("\n");
     expect($log_contents)->toContain('fingerprint_disable_requested');
     expect($log_contents)->toContain('command_enqueued');
 });
-

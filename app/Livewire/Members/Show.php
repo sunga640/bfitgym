@@ -96,16 +96,14 @@ class Show extends Component
         $access_logger = app(\App\Support\AccessLogger::class);
 
         try {
-            $device_user_id = trim((string) $this->member->member_no);
-            if ($device_user_id === '') {
-                session()->flash('error', __('Member is missing member number; cannot sync to device.'));
-                return;
-            }
-
             $target = app(AccessControlCommandService::class)->resolveIntegrationAndProvider(
                 branch_id: $this->member->branch_id,
                 subject_type: AccessIdentity::SUBJECT_MEMBER,
                 subject_id: $this->member->id,
+            );
+            $device_user_id = app(AccessControlService::class)->getMemberDeviceUserId(
+                $this->member,
+                $target['integration_type']
             );
 
             $valid_from = now();
@@ -151,6 +149,7 @@ class Show extends Component
             $access_logger->info('user_sync_to_device_started', [
                 'member_id' => $this->member->id,
                 'member_no' => $this->member->member_no,
+                'device_user_id' => $device_user_id,
                 'access_identity_id' => $access_identity->id,
                 'command_id' => $result['command']->id,
             ]);

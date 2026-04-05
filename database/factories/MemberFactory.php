@@ -26,7 +26,7 @@ class MemberFactory extends Factory
         return [
             'branch_id' => Branch::factory(),
             'user_id' => null,
-            'member_no' => 'MBR-' . strtoupper($this->faker->unique()->bothify('??###')),
+            'member_no' => '9929' . strtoupper($this->faker->unique()->bothify('??###')),
             'first_name' => $first_name,
             'last_name' => $last_name,
             'gender' => $this->faker->randomElement(['male', 'female']),

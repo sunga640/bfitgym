@@ -5,6 +5,9 @@ use App\Models\AccessControlDevice;
 use App\Models\AccessIdentity;
 use App\Models\AccessLog;
 use App\Models\Branch;
+use App\Models\CvSecurityAgent;
+use App\Models\CvSecurityConnection;
+use App\Models\CvSecurityEvent;
 use App\Models\Member;
 use App\Models\User;
 use App\Models\ZktecoAccessEvent;
@@ -182,4 +185,72 @@ it('filters attendance report by integration type', function () {
         ->assertSee('ZK Filter Gate')
         ->assertDontSee('hik-filter-uid')
         ->assertSee('zk-filter-uid');
+});
+
+it('includes cvsecurity local-agent events and supports cvsecurity device filter keys', function () {
+    $member = Member::factory()->create([
+        'branch_id' => $this->branch->id,
+        'member_no' => 'MBR-CV-ATT-01',
+    ]);
+
+    $connection = CvSecurityConnection::query()->withoutBranchScope()->create([
+        'branch_id' => $this->branch->id,
+        'name' => 'Front Desk Agent',
+        'status' => CvSecurityConnection::STATUS_CONNECTED,
+    ]);
+
+    $agent = CvSecurityAgent::query()->withoutBranchScope()->create([
+        'cvsecurity_connection_id' => $connection->id,
+        'branch_id' => $this->branch->id,
+        'uuid' => (string) \Illuminate\Support\Str::uuid(),
+        'display_name' => 'Desk-PC-01',
+        'status' => CvSecurityAgent::STATUS_ACTIVE,
+        'auth_token_hash' => hash('sha256', 'token-a'),
+    ]);
+
+    CvSecurityEvent::query()->withoutBranchScope()->create([
+        'cvsecurity_connection_id' => $connection->id,
+        'branch_id' => $this->branch->id,
+        'agent_id' => $agent->id,
+        'member_id' => $member->id,
+        'external_event_id' => 'cv-att-event-1',
+        'external_person_id' => $member->member_no,
+        'event_type' => 'entry_granted',
+        'direction' => 'entry',
+        'occurred_at' => now()->subMinutes(15),
+        'device_id' => 'reader-A',
+        'processing_status' => 'received',
+        'dedupe_hash' => hash('sha256', 'cv-att-event-1'),
+        'raw_payload' => ['source' => 'cvsecurity'],
+        'received_at' => now()->subMinutes(15),
+    ]);
+
+    CvSecurityEvent::query()->withoutBranchScope()->create([
+        'cvsecurity_connection_id' => $connection->id,
+        'branch_id' => $this->branch->id,
+        'agent_id' => $agent->id,
+        'member_id' => $member->id,
+        'external_event_id' => 'cv-att-event-2',
+        'external_person_id' => $member->member_no,
+        'event_type' => 'entry_granted',
+        'direction' => 'exit',
+        'occurred_at' => now()->subMinutes(10),
+        'device_id' => 'reader-B',
+        'processing_status' => 'received',
+        'dedupe_hash' => hash('sha256', 'cv-att-event-2'),
+        'raw_payload' => ['source' => 'cvsecurity'],
+        'received_at' => now()->subMinutes(10),
+    ]);
+
+    Livewire::test(AttendanceReport::class)
+        ->set('date_from', now()->subDay()->format('Y-m-d'))
+        ->set('date_to', now()->format('Y-m-d'))
+        ->assertSee('cv-att-event-1')
+        ->assertSee('cv-att-event-2')
+        ->assertSee('Desk-PC-01')
+        ->assertSee('reader-A')
+        ->assertSee('reader-B')
+        ->set('device', 'zkteco:cvsecurity:' . $connection->id . ':reader-A')
+        ->assertSee('cv-att-event-1')
+        ->assertDontSee('cv-att-event-2');
 });

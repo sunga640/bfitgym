@@ -39,7 +39,7 @@ class AgentCommandsController extends Controller
         $peek = $this->isPeekRequest($request);
 
         $device_ids = $this->getAgentDeviceIds($agent);
-        $provider_filters = $agent->providerList();
+        $provider_filters = $this->resolveProviderFilters($agent, $device_ids);
 
         $access_logger = app(AccessLogger::class);
 
@@ -51,6 +51,7 @@ class AgentCommandsController extends Controller
                 'branch_id' => $agent->branch_id,
                 'peek' => $peek,
                 'assigned_device_ids' => [],
+                'provider_filters' => $provider_filters,
                 'returned_count' => 0,
                 'resumed_count' => 0,
                 'newly_claimed_count' => 0,
@@ -73,6 +74,7 @@ class AgentCommandsController extends Controller
                 'branch_id' => $agent->branch_id,
                 'peek' => true,
                 'assigned_device_ids' => $device_ids->take(10)->toArray(),
+                'provider_filters' => $provider_filters,
                 'returned_count' => $commands->count(),
                 'command_ids' => $commands->pluck('id')->take(10)->toArray(),
             ]);
@@ -101,7 +103,7 @@ class AgentCommandsController extends Controller
                 $stale_commands = AccessControlDeviceCommand::query()
                     ->where('branch_id', $agent->branch_id)
                     ->whereIn('access_control_device_id', $device_ids)
-                    ->whereIn('provider', $provider_filters)
+                    ->when(!empty($provider_filters), fn($q) => $q->whereIn('provider', $provider_filters))
                     ->where('status', AccessControlDeviceCommand::STATUS_CLAIMED)
                     ->whereNull('finished_at')
                     ->where('claimed_at', '<', $stale_threshold)
@@ -171,7 +173,7 @@ class AgentCommandsController extends Controller
             $resumed = AccessControlDeviceCommand::query()
                 ->where('branch_id', $agent->branch_id)
                 ->whereIn('access_control_device_id', $device_ids)
-                ->whereIn('provider', $provider_filters)
+                ->when(!empty($provider_filters), fn($q) => $q->whereIn('provider', $provider_filters))
                 ->where('claimed_by_agent_id', $agent->id)
                 ->whereIn('status', [
                     AccessControlDeviceCommand::STATUS_CLAIMED,
@@ -214,7 +216,7 @@ class AgentCommandsController extends Controller
                 $candidates = AccessControlDeviceCommand::query()
                     ->where('branch_id', $agent->branch_id)
                     ->whereIn('access_control_device_id', $device_ids)
-                    ->whereIn('provider', $provider_filters)
+                    ->when(!empty($provider_filters), fn($q) => $q->whereIn('provider', $provider_filters))
                     ->where('status', AccessControlDeviceCommand::STATUS_PENDING)
                     ->whereNull('claimed_by_agent_id')
                     ->whereNull('finished_at') // Safety: never return finished commands
@@ -283,6 +285,7 @@ class AgentCommandsController extends Controller
             'branch_id' => $agent->branch_id,
             'peek' => false,
             'assigned_device_ids' => $device_ids->take(10)->toArray(),
+            'provider_filters' => $provider_filters,
             'returned_count' => $returned_count,
             'resumed_count' => $result['resumed_count'],
             'newly_claimed_count' => $result['newly_claimed_count'],
@@ -323,7 +326,7 @@ class AgentCommandsController extends Controller
         $pending = AccessControlDeviceCommand::query()
             ->where('branch_id', $agent->branch_id)
             ->whereIn('access_control_device_id', $device_ids)
-            ->whereIn('provider', $provider_filters)
+            ->when(!empty($provider_filters), fn($q) => $q->whereIn('provider', $provider_filters))
             ->where('status', AccessControlDeviceCommand::STATUS_PENDING)
             ->whereNull('finished_at') // Safety: never return finished commands
             ->whereColumn('attempts', '<', 'max_attempts')
@@ -339,7 +342,7 @@ class AgentCommandsController extends Controller
         $claimed = AccessControlDeviceCommand::query()
             ->where('branch_id', $agent->branch_id)
             ->whereIn('access_control_device_id', $device_ids)
-            ->whereIn('provider', $provider_filters)
+            ->when(!empty($provider_filters), fn($q) => $q->whereIn('provider', $provider_filters))
             ->where('status', AccessControlDeviceCommand::STATUS_CLAIMED)
             ->where('claimed_by_agent_id', $agent->id)
             ->whereNull('finished_at') // Safety: never return finished commands
@@ -385,6 +388,7 @@ class AgentCommandsController extends Controller
             'branch_id' => $cmd->branch_id,
             'integration_type' => $cmd->integration_type,
             'provider' => $cmd->provider,
+            'provider_key' => AccessControlDevice::canonicalProviderKey($cmd->provider, $cmd->integration_type),
             'driver' => AccessControlDevice::driverForProvider($cmd->provider),
             'device_id' => $cmd->access_control_device_id,
             'type' => $cmd->type,
@@ -411,5 +415,30 @@ class AgentCommandsController extends Controller
             ->pluck('id');
 
         return $pivot_ids->merge($primary_ids)->unique()->values();
+    }
+
+    /**
+     * Resolve provider filters from assigned devices first, then agent capabilities fallback.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $device_ids
+     * @return array<int, string>
+     */
+    protected function resolveProviderFilters(AccessControlAgent $agent, $device_ids): array
+    {
+        $providers_from_devices = AccessControlDevice::query()
+            ->where('branch_id', $agent->branch_id)
+            ->whereIn('id', $device_ids)
+            ->pluck('provider')
+            ->filter(fn ($provider) => is_string($provider) && trim($provider) !== '')
+            ->flatMap(fn (string $provider) => AccessControlDevice::providerAliases($provider))
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! empty($providers_from_devices)) {
+            return $providers_from_devices;
+        }
+
+        return $agent->providerList();
     }
 }

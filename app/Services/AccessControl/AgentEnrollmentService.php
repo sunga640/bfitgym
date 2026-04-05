@@ -192,6 +192,23 @@ class AgentEnrollmentService
                 $providers[] = $provider;
             }
 
+            $assigned_device_providers = AccessControlDevice::query()
+                ->where('branch_id', $enrollment->branch_id)
+                ->where(function ($q) use ($agent) {
+                    $q->where('access_control_agent_id', $agent->id)
+                        ->orWhereIn('id', $agent->devices()->pluck('access_control_devices.id'));
+                })
+                ->pluck('provider')
+                ->filter(fn ($value) => is_string($value) && trim($value) !== '')
+                ->flatMap(fn (string $value) => AccessControlDevice::providerAliases($value))
+                ->unique()
+                ->values()
+                ->all();
+
+            if (!empty($assigned_device_providers)) {
+                $providers = array_values(array_unique(array_merge($providers, $assigned_device_providers)));
+            }
+
             // Update agent with registration details
             $agent->update([
                 'name' => $agent_name,

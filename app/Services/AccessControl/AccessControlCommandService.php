@@ -24,11 +24,6 @@ class AccessControlCommandService
         ?string $provider = null,
     ): array
     {
-        $device_user_id = trim((string) ($member->member_no ?? ''));
-        if ($device_user_id === '') {
-            throw new AccessControlActionException('Member is missing member number; cannot build device_user_id.');
-        }
-
         $target = $this->resolveIntegrationAndProvider(
             branch_id: $member->branch_id,
             integration_type: $integration_type,
@@ -36,6 +31,7 @@ class AccessControlCommandService
             subject_type: AccessIdentity::SUBJECT_MEMBER,
             subject_id: $member->id,
         );
+        $device_user_id = $this->resolveMemberDeviceUserIdForIntegration($member, $target['integration_type']);
 
         // Use last week for both valid_from and valid_to to ensure user is clearly expired
         // regardless of timezone differences between cloud and local agent.
@@ -85,11 +81,6 @@ class AccessControlCommandService
         ?string $provider = null,
     ): array
     {
-        $device_user_id = trim((string) ($member->member_no ?? ''));
-        if ($device_user_id === '') {
-            throw new AccessControlActionException('Member is missing member number; cannot build device_user_id.');
-        }
-
         $target = $this->resolveIntegrationAndProvider(
             branch_id: $member->branch_id,
             integration_type: $integration_type,
@@ -97,6 +88,7 @@ class AccessControlCommandService
             subject_type: AccessIdentity::SUBJECT_MEMBER,
             subject_id: $member->id,
         );
+        $device_user_id = $this->resolveMemberDeviceUserIdForIntegration($member, $target['integration_type']);
 
         $eligibility = app(AccessEligibilityService::class);
 
@@ -141,20 +133,18 @@ class AccessControlCommandService
      *
      * - Find by: branch_id + subject_type='member' + subject_id
      * - Create if missing with:
-     *   - device_user_id = member.member_no
+     *   - hikvision: random unique 6-digit numeric string
+     *   - zkteco: device_user_id = members.member_no
      *   - is_active = true
      */
     public function ensure_access_identity_for_member(Member $member): AccessIdentity
     {
-        if (empty($member->member_no)) {
-            throw new \InvalidArgumentException('Member member_no is required to build device_user_id.');
-        }
-
         $target = $this->resolveIntegrationAndProvider(
             branch_id: $member->branch_id,
             subject_type: AccessIdentity::SUBJECT_MEMBER,
             subject_id: $member->id,
         );
+        $device_user_id = $this->resolveMemberDeviceUserIdForIntegration($member, $target['integration_type']);
 
         $identity = AccessIdentity::query()
             ->withoutBranchScope()
@@ -165,6 +155,19 @@ class AccessControlCommandService
             ->first();
 
         if ($identity) {
+            $updates = [];
+            if ((string) $identity->device_user_id !== $device_user_id) {
+                $updates['device_user_id'] = $device_user_id;
+            }
+            if ((string) $identity->provider !== (string) $target['provider']) {
+                $updates['provider'] = $target['provider'];
+            }
+
+            if ($updates !== []) {
+                $identity->update($updates);
+                $identity->refresh();
+            }
+
             return $identity;
         }
 
@@ -174,7 +177,7 @@ class AccessControlCommandService
             'provider' => $target['provider'],
             'subject_type' => AccessIdentity::SUBJECT_MEMBER,
             'subject_id' => $member->id,
-            'device_user_id' => $member->member_no,
+            'device_user_id' => $device_user_id,
             'is_active' => true,
         ]);
     }
@@ -219,6 +222,7 @@ class AccessControlCommandService
                     payload: [
                         'device_user_id' => $identity->device_user_id,
                         'full_name' => $member->full_name,
+                        'gender' => $this->normalizeMemberGender($member->gender),
                         'subject_type' => AccessIdentity::SUBJECT_MEMBER,
                         'subject_id' => $member->id,
                         'reason' => $reason,
@@ -372,6 +376,7 @@ class AccessControlCommandService
             'subject_type' => AccessIdentity::SUBJECT_MEMBER,
             'subject_id' => $member->id,
             'full_name' => $member->full_name,
+            'gender' => $this->normalizeMemberGender($member->gender),
             'valid_from' => $validity['start_date']?->toIso8601String(),
             'valid_to' => $validity['end_date']?->copy()->endOfDay()->toIso8601String(),
         ];
@@ -402,11 +407,6 @@ class AccessControlCommandService
         ?string $provider = null,
     ): array
     {
-        $device_user_id = trim((string) ($member->member_no ?? ''));
-        if ($device_user_id === '') {
-            throw new \InvalidArgumentException('Member member_no is required to build device_user_id.');
-        }
-
         $target = $this->resolveIntegrationAndProvider(
             branch_id: $member->branch_id,
             integration_type: $integration_type,
@@ -414,6 +414,7 @@ class AccessControlCommandService
             subject_type: AccessIdentity::SUBJECT_MEMBER,
             subject_id: $member->id,
         );
+        $device_user_id = $this->resolveMemberDeviceUserIdForIntegration($member, $target['integration_type']);
 
         $devices = AccessControlDevice::query()
             ->withoutBranchScope()
@@ -554,6 +555,7 @@ class AccessControlCommandService
             'access_identity_id' => $access_identity->id,
             'device_user_id' => $access_identity->device_user_id,
             'full_name' => $member->full_name,
+            'gender' => $this->normalizeMemberGender($member->gender),
             'subject_type' => AccessIdentity::SUBJECT_MEMBER,
             'subject_id' => $member->id,
             'valid_from' => $valid_from->toIso8601String(),
@@ -951,5 +953,104 @@ class AccessControlCommandService
         return $integration_type === AccessControlDevice::INTEGRATION_ZKTECO
             ? AccessControlDevice::PROVIDER_ZKTECO_ZKBIO
             : AccessControlDevice::PROVIDER_HIKVISION_AGENT;
+    }
+
+    public function resolveMemberDeviceUserIdForIntegration(Member $member, string $integration_type): string
+    {
+        if ($integration_type === AccessControlDevice::INTEGRATION_ZKTECO) {
+            $member_no = trim((string) ($member->member_no ?? ''));
+            if ($member_no === '') {
+                throw new \InvalidArgumentException('Member member_no is required to build device_user_id for zkteco.');
+            }
+
+            return $member_no;
+        }
+
+        $existing_identity = AccessIdentity::withTrashed()
+            ->withoutBranchScope()
+            ->where('branch_id', $member->branch_id)
+            ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
+            ->where('subject_type', AccessIdentity::SUBJECT_MEMBER)
+            ->where('subject_id', $member->id)
+            ->orderByDesc('is_active')
+            ->latest('id')
+            ->first();
+
+        $existing_device_user_id = trim((string) ($existing_identity?->device_user_id ?? ''));
+        if ($existing_device_user_id !== '') {
+            if ($this->isLegacyHikvisionMemberDeviceUserId($member, $existing_device_user_id)) {
+                $replacement = $this->generateUniqueHikvisionMemberDeviceUserId(
+                    branch_id: (int) $member->branch_id,
+                    excluded_device_user_ids: [$existing_device_user_id]
+                );
+
+                if ($existing_identity !== null) {
+                    $existing_identity->device_user_id = $replacement;
+                    $existing_identity->save();
+                }
+
+                return $replacement;
+            }
+
+            return $existing_device_user_id;
+        }
+
+        return $this->generateUniqueHikvisionMemberDeviceUserId((int) $member->branch_id);
+    }
+
+    private function generateUniqueHikvisionMemberDeviceUserId(int $branch_id, array $excluded_device_user_ids = []): string
+    {
+        if ($branch_id <= 0) {
+            throw new \InvalidArgumentException('Branch ID is required to generate a Hikvision member device_user_id.');
+        }
+
+        $excluded = collect($excluded_device_user_ids)
+            ->map(fn ($value) => trim((string) $value))
+            ->filter(fn (string $value) => $value !== '')
+            ->values();
+
+        for ($attempt = 0; $attempt < 50; $attempt++) {
+            $candidate = (string) random_int(100000, 999999);
+            if ($excluded->contains($candidate)) {
+                continue;
+            }
+
+            $exists = AccessIdentity::withTrashed()
+                ->withoutBranchScope()
+                ->where('branch_id', $branch_id)
+                ->where('integration_type', AccessControlDevice::INTEGRATION_HIKVISION)
+                ->where('device_user_id', $candidate)
+                ->exists();
+
+            if (! $exists) {
+                return $candidate;
+            }
+        }
+
+        throw new \RuntimeException('Could not generate a unique 6-digit Hikvision member device_user_id after multiple attempts.');
+    }
+
+    private function isLegacyHikvisionMemberDeviceUserId(Member $member, string $device_user_id): bool
+    {
+        $member_id = (int) ($member->id ?? 0);
+        if ($member_id <= 0) {
+            return false;
+        }
+
+        $legacy_value = str_pad((string) $member_id, 6, '0', STR_PAD_LEFT);
+
+        return $device_user_id === $legacy_value;
+    }
+
+    private function normalizeMemberGender(?string $gender): string
+    {
+        $value = strtolower(trim((string) $gender));
+
+        return match ($value) {
+            'male' => 'male',
+            'female' => 'female',
+            'other' => 'other',
+            default => 'other',
+        };
     }
 }

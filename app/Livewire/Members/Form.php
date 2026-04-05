@@ -105,9 +105,25 @@ class Form extends Component
             ],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
-            'phone' => ['required', 'string', 'max:50'],
-            'email' => ['nullable', 'string', 'email', 'max:200', Rule::unique('members', 'email')->ignore($this->member?->id)],
-            'gender' => ['nullable', Rule::in(['male', 'female', 'other'])],
+            'phone' => [
+                'required',
+                'string',
+                'size:12',
+                'regex:/^255\d{9}$/',
+                Rule::unique('members', 'phone')->ignore($this->member?->id),
+            ],
+            'email' => [
+                'nullable',
+                'string',
+                'email',
+                'max:200',
+                Rule::unique('members', 'email')->ignore($this->member?->id),
+            ],
+            'gender' => [
+                Rule::requiredIf(fn() => ! $this->isEditing),
+                'nullable',
+                Rule::in(['male', 'female', 'other']),
+            ],
             'dob' => ['nullable', 'date'],
             'address' => ['nullable', 'string', 'max:255'],
             'status' => ['required', Rule::in(['active', 'inactive', 'suspended'])],
@@ -138,6 +154,11 @@ class Form extends Component
     public function messages(): array
     {
         return [
+            'phone.size' => __('Phone number must be 12 digits in the format 255XXXXXXXXX.'),
+            'phone.regex' => __('Phone number must be in the format 255XXXXXXXXX.'),
+            'phone.unique' => __('This phone number is already registered to another member.'),
+            'email.unique' => __('This email is already registered to another member.'),
+            'gender.required' => __('Please select gender.'),
             'insurer_id.required' => __('Please select an insurer.'),
             'insurance_start_date.required' => __('Please enter the insurance start date.'),
             'insurance_end_date.after_or_equal' => __('End date must be after or equal to start date.'),
@@ -147,7 +168,9 @@ class Form extends Component
     public function save(): void
     {
         $this->authorize($this->isEditing ? 'update' : 'create', $this->member ?? Member::class);
+        $this->normalizeContactFields();
         $data = $this->validate();
+        $data['email'] = Member::normalizeEmail($data['email'] ?? null);
 
         if (!isset($data['branch_id']) || $data['branch_id'] === null) {
             $data['branch_id'] = $this->branch_id ?? Auth::user()?->branch_id;
@@ -227,6 +250,12 @@ class Form extends Component
         }
     }
 
+    private function normalizeContactFields(): void
+    {
+        $this->phone = Member::normalizePhone($this->phone) ?? '';
+        $this->email = Member::normalizeEmail($this->email) ?? '';
+    }
+
     public function render(): View
     {
         $branches = Auth::user()->hasRole('super-admin')
@@ -243,7 +272,7 @@ class Form extends Component
 
     private function generateMemberNo(?int $branchId): string
     {
-        $prefix = 'MBR';
+        $prefix = '455';
 
         if ($branchId) {
             $prefix .= '-' . str_pad((string) $branchId, 2, '0', STR_PAD_LEFT);

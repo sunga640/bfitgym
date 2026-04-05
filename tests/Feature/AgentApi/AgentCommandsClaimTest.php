@@ -413,3 +413,67 @@ test('processing status commands are also resumed', function () {
     $response->assertJsonCount(1, 'commands');
     expect($response->json('commands.0.id'))->toBe($command_id);
 });
+
+test('agent claims zkteco commands from assigned devices even when agent default provider is hikvision', function () {
+    $branch = Branch::factory()->create();
+
+    $token = Str::random(32);
+    $agent = AccessControlAgent::create([
+        'branch_id' => $branch->id,
+        'uuid' => (string) Str::uuid(),
+        'name' => 'Mixed Agent',
+        'os' => 'windows',
+        'app_version' => '1.0.0',
+        'status' => AccessControlAgent::STATUS_ACTIVE,
+        'supported_providers' => [AccessControlDevice::PROVIDER_HIKVISION_AGENT],
+        'default_provider' => AccessControlDevice::PROVIDER_HIKVISION_AGENT,
+        'secret_hash' => hash('sha256', $token),
+    ]);
+
+    $zkteco_device = AccessControlDevice::create([
+        'branch_id' => $branch->id,
+        'access_control_agent_id' => $agent->id,
+        'integration_type' => AccessControlDevice::INTEGRATION_ZKTECO,
+        'provider' => AccessControlDevice::PROVIDER_ZKTECO_ZKBIO,
+        'name' => 'ZK Device',
+        'device_model' => 'ZK-A',
+        'device_type' => AccessControlDevice::TYPE_ENTRY,
+        'serial_number' => 'ZK-SN-' . Str::random(8),
+        'status' => AccessControlDevice::STATUS_ACTIVE,
+        'connection_status' => AccessControlDevice::CONNECTION_UNKNOWN,
+        'auto_sync_enabled' => false,
+        'sync_interval_minutes' => 5,
+        'supports_face_recognition' => true,
+        'supports_fingerprint' => true,
+        'supports_card' => true,
+    ]);
+
+    $command_id = (string) Str::uuid();
+    AccessControlDeviceCommand::create([
+        'id' => $command_id,
+        'branch_id' => $branch->id,
+        'integration_type' => AccessControlDevice::INTEGRATION_ZKTECO,
+        'provider' => AccessControlDevice::PROVIDER_ZKTECO_ZKBIO,
+        'access_control_device_id' => $zkteco_device->id,
+        'subject_type' => 'member',
+        'subject_id' => 999,
+        'type' => AccessControlDeviceCommand::TYPE_PERSON_UPSERT,
+        'priority' => 20,
+        'status' => AccessControlDeviceCommand::STATUS_PENDING,
+        'attempts' => 0,
+        'max_attempts' => 10,
+        'available_at' => null,
+        'payload' => ['device_user_id' => 'MBR-ZK-999'],
+    ]);
+
+    $response = $this->withHeaders([
+        'X-Agent-UUID' => $agent->uuid,
+        'X-Agent-Token' => $token,
+    ])->getJson('/api/agent/commands?limit=50');
+
+    $response->assertOk();
+    $response->assertJsonCount(1, 'commands');
+    expect($response->json('commands.0.id'))->toBe($command_id);
+    expect($response->json('commands.0.provider'))->toBe(AccessControlDevice::PROVIDER_ZKTECO_ZKBIO);
+    expect($response->json('commands.0.provider_key'))->toBe('zkteco');
+});

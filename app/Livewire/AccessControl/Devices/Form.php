@@ -8,7 +8,6 @@ use App\Models\Location;
 use App\Services\BranchContext;
 use App\Support\Integrations\IntegrationPermission;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -74,25 +73,28 @@ class Form extends Component
 
             $this->authorize('update', $device);
 
-            $this->fill(Arr::only($device->toArray(), [
-                'branch_id',
-                'integration_type',
-                'provider',
-                'name',
-                'device_model',
-                'device_type',
-                'serial_number',
-                'location_id',
-                'status',
-                'ip_address',
-                'port',
-                'username',
-                'supports_face_recognition',
-                'supports_fingerprint',
-                'supports_card',
-                'auto_sync_enabled',
-                'sync_interval_minutes',
-            ]));
+            $provider = $device->provider;
+            if ($provider === null || trim((string) $provider) === '') {
+                $provider = $this->defaultProviderForIntegration();
+            }
+
+            $this->branch_id = $device->branch_id;
+            $this->integration_type = (string) ($device->integration_type ?? $this->integration_type);
+            $this->provider = AccessControlDevice::normalizeProvider($provider);
+            $this->name = (string) ($device->name ?? '');
+            $this->device_model = (string) ($device->device_model ?? $this->device_model);
+            $this->device_type = (string) ($device->device_type ?? $this->device_type);
+            $this->serial_number = (string) ($device->serial_number ?? '');
+            $this->location_id = $device->location_id;
+            $this->status = (string) ($device->status ?? $this->status);
+            $this->ip_address = (string) ($device->ip_address ?? '');
+            $this->port = (int) ($device->port ?? $this->port);
+            $this->username = (string) ($device->username ?? '');
+            $this->supports_face_recognition = (bool) ($device->supports_face_recognition ?? $this->supports_face_recognition);
+            $this->supports_fingerprint = (bool) ($device->supports_fingerprint ?? $this->supports_fingerprint);
+            $this->supports_card = (bool) ($device->supports_card ?? $this->supports_card);
+            $this->auto_sync_enabled = (bool) ($device->auto_sync_enabled ?? $this->auto_sync_enabled);
+            $this->sync_interval_minutes = (int) ($device->sync_interval_minutes ?? $this->sync_interval_minutes);
             $this->notes = $device->notes ?? '';
         } else {
             $this->authorize('create', AccessControlDevice::class);

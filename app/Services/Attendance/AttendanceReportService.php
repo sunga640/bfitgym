@@ -17,12 +17,14 @@ class AttendanceReportService
         $branch_id = $this->toNullableInt($filters['branch_id'] ?? null);
 
         $hikvision_query = $this->hikvisionQuery($from, $to, $branch_id);
-        $zkteco_query = $this->zktecoQuery($from, $to, $branch_id);
+        $zkteco_legacy_query = $this->zktecoLegacyQuery($from, $to, $branch_id);
+        $zkteco_agent_query = $this->zktecoAgentQuery($from, $to, $branch_id);
+        $zkteco_query = $this->unionQueries([$zkteco_legacy_query, $zkteco_agent_query]);
 
         $source_query = match ($integration_type) {
             AccessControlDevice::INTEGRATION_HIKVISION => $hikvision_query,
             AccessControlDevice::INTEGRATION_ZKTECO => $zkteco_query,
-            default => $hikvision_query->unionAll($zkteco_query),
+            default => $this->unionQueries([$hikvision_query, $zkteco_legacy_query, $zkteco_agent_query]),
         };
 
         $query = DB::query()->fromSub($source_query, 'attendance_events');
@@ -40,13 +42,14 @@ class AttendanceReportService
         $device = $this->parseDeviceKey($filters['device'] ?? null);
         if ($device !== null) {
             $query->where('integration_type', $device['integration_type'])
-                ->where('source_device_id', $device['source_device_id']);
+                ->where('source_device_key', $device['source_device_key']);
         }
 
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
             $query->where(function (Builder $inner) use ($search) {
                 $inner->where('source_device_name', 'like', '%' . $search . '%')
+                    ->orWhere('source_agent_name', 'like', '%' . $search . '%')
                     ->orWhere('device_user_id', 'like', '%' . $search . '%')
                     ->orWhere('subject_code', 'like', '%' . $search . '%')
                     ->orWhere('subject_first_name', 'like', '%' . $search . '%')
@@ -104,6 +107,7 @@ class AttendanceReportService
                 'l.provider',
                 'l.access_control_device_id as source_device_id',
                 'd.name as source_device_name',
+                DB::raw("CONCAT('hikvision:', l.access_control_device_id) as source_device_key"),
                 'd.access_control_agent_id as source_agent_id',
                 'a.name as source_agent_name',
                 'l.subject_type',
@@ -119,7 +123,7 @@ class AttendanceReportService
             ]);
     }
 
-    private function zktecoQuery(Carbon $from, Carbon $to, ?int $branch_id): Builder
+    private function zktecoLegacyQuery(Carbon $from, Carbon $to, ?int $branch_id): Builder
     {
         $zkteco_provider = AccessControlDevice::PROVIDER_ZKTECO_ZKBIO;
 
@@ -137,6 +141,7 @@ class AttendanceReportService
                 DB::raw("CASE WHEN zc.provider = 'zkbio_api' OR zc.provider = 'zkbio_platform' THEN '{$zkteco_provider}' ELSE zc.provider END as provider"),
                 'z.zkteco_device_id as source_device_id',
                 DB::raw('COALESCE(zd.remote_name, zd.remote_device_id) as source_device_name'),
+                DB::raw("CONCAT('zkteco:', z.zkteco_device_id) as source_device_key"),
                 DB::raw('NULL as source_agent_id'),
                 DB::raw("'ZKBio CVAccess' as source_agent_name"),
                 DB::raw("CASE WHEN z.member_id IS NULL THEN 'unknown' ELSE 'member' END as subject_type"),
@@ -150,6 +155,61 @@ class AttendanceReportService
                 DB::raw('COALESCE(z.remote_event_id, z.event_fingerprint) as event_uid'),
                 'z.event_status',
             ]);
+    }
+
+    private function zktecoAgentQuery(Carbon $from, Carbon $to, ?int $branch_id): Builder
+    {
+        $provider = AccessControlDevice::PROVIDER_ZKTECO_AGENT;
+
+        return DB::table('cvsecurity_events as e')
+            ->leftJoin('cvsecurity_connections as c', 'c.id', '=', 'e.cvsecurity_connection_id')
+            ->leftJoin('cvsecurity_agents as a', 'a.id', '=', 'e.agent_id')
+            ->leftJoin('members as m', 'm.id', '=', 'e.member_id')
+            ->when($branch_id, fn(Builder $query) => $query->where('e.branch_id', $branch_id))
+            ->whereBetween('e.occurred_at', [$from, $to])
+            ->select([
+                DB::raw("'cvsecurity_events' as source_table"),
+                'e.id as source_id',
+                'e.branch_id',
+                DB::raw("'zkteco' as integration_type"),
+                DB::raw("'{$provider}' as provider"),
+                'e.device_id as source_device_id',
+                DB::raw("COALESCE(NULLIF(e.device_id, ''), NULLIF(e.reader_id, ''), NULLIF(e.door_id, ''), '-') as source_device_name"),
+                DB::raw("CASE WHEN e.device_id IS NULL OR e.device_id = '' THEN NULL ELSE CONCAT('zkteco:cvsecurity:', e.cvsecurity_connection_id, ':', e.device_id) END as source_device_key"),
+                'e.agent_id as source_agent_id',
+                DB::raw("COALESCE(NULLIF(a.display_name, ''), NULLIF(c.agent_label, ''), NULLIF(c.name, ''), 'CVSecurity Agent') as source_agent_name"),
+                DB::raw("CASE WHEN e.member_id IS NULL THEN 'unknown' ELSE 'member' END as subject_type"),
+                'e.member_id as subject_id',
+                'm.first_name as subject_first_name',
+                'm.last_name as subject_last_name',
+                'm.member_no as subject_code',
+                DB::raw("COALESCE(NULLIF(e.external_person_id, ''), m.member_no) as device_user_id"),
+                DB::raw("CASE
+                    WHEN LOWER(COALESCE(e.direction, '')) IN ('in', 'entry', 'checkin', 'check_in', 'enter', 'entry_granted') THEN 'in'
+                    WHEN LOWER(COALESCE(e.direction, '')) IN ('out', 'exit', 'checkout', 'check_out', 'leave', 'exit_granted') THEN 'out'
+                    ELSE 'unknown'
+                END as direction"),
+                'e.occurred_at as event_timestamp',
+                DB::raw('COALESCE(e.external_event_id, e.dedupe_hash) as event_uid'),
+                'e.processing_status as event_status',
+            ]);
+    }
+
+    /**
+     * @param array<int, Builder> $queries
+     */
+    private function unionQueries(array $queries): Builder
+    {
+        $base = array_shift($queries);
+        if (!$base instanceof Builder) {
+            throw new \InvalidArgumentException('At least one query is required for union.');
+        }
+
+        foreach ($queries as $query) {
+            $base->unionAll($query);
+        }
+
+        return $base;
     }
 
     /**
@@ -197,7 +257,7 @@ class AttendanceReportService
     }
 
     /**
-     * @return array{integration_type:string,source_device_id:int}|null
+     * @return array{integration_type:string,source_device_key:string}|null
      */
     private function parseDeviceKey(mixed $value): ?array
     {
@@ -206,20 +266,20 @@ class AttendanceReportService
             return null;
         }
 
-        [$integration_type, $id] = explode(':', $raw, 2);
+        [$integration_type, $rest] = explode(':', $raw, 2);
 
         $integration_type = $this->normalizeIntegrationType($integration_type);
         if ($integration_type === null) {
             return null;
         }
 
-        if (!ctype_digit($id)) {
+        if (trim($rest) === '') {
             return null;
         }
 
         return [
             'integration_type' => $integration_type,
-            'source_device_id' => (int) $id,
+            'source_device_key' => $raw,
         ];
     }
 }

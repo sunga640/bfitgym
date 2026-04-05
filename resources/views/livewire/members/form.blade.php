@@ -79,8 +79,8 @@
 
                 <div>
                     <flux:field>
-                        <flux:label>{{ __('Gender') }}</flux:label>
-                        <flux:select wire:model.live="gender">
+                        <flux:label>{{ __('Gender') }} <span class="text-red-500">*</span></flux:label>
+                        <flux:select wire:model.live="gender" required>
                             <option value="">{{ __('Select gender') }}</option>
                             <option value="male">{{ __('Male') }}</option>
                             <option value="female">{{ __('Female') }}</option>

@@ -49,6 +49,7 @@ class AccessControlDevice extends Model
     public const PROVIDER_HIKVISION_AGENT = 'hikvision_agent';
     public const PROVIDER_ZKTECO_ZKBIO = 'zkteco_zkbio';
     public const PROVIDER_ZKBIO_PLATFORM = 'zkbio_platform'; // legacy alias
+    public const PROVIDER_ZKBIO_API = 'zkbio_api'; // legacy alias
     public const PROVIDER_ZKTECO_AGENT = 'zkteco_agent';
 
     /** Drivers */
@@ -253,6 +254,7 @@ class AccessControlDevice extends Model
             self::INTEGRATION_ZKTECO => [
                 self::PROVIDER_ZKTECO_ZKBIO,
                 self::PROVIDER_ZKBIO_PLATFORM,
+                self::PROVIDER_ZKBIO_API,
                 self::PROVIDER_ZKTECO_AGENT,
             ],
             default => [self::PROVIDER_HIKVISION_AGENT],
@@ -270,7 +272,7 @@ class AccessControlDevice extends Model
     public static function normalizeProvider(?string $provider): string
     {
         return match (trim((string) $provider)) {
-            self::PROVIDER_ZKBIO_PLATFORM => self::PROVIDER_ZKTECO_ZKBIO,
+            self::PROVIDER_ZKBIO_PLATFORM, self::PROVIDER_ZKBIO_API => self::PROVIDER_ZKTECO_ZKBIO,
             self::PROVIDER_ZKTECO_ZKBIO,
             self::PROVIDER_ZKTECO_AGENT,
             self::PROVIDER_HIKVISION_AGENT => trim((string) $provider),
@@ -289,6 +291,7 @@ class AccessControlDevice extends Model
             return [
                 self::PROVIDER_ZKTECO_ZKBIO,
                 self::PROVIDER_ZKBIO_PLATFORM,
+                self::PROVIDER_ZKBIO_API,
                 self::PROVIDER_ZKTECO_AGENT,
             ];
         }
@@ -298,10 +301,27 @@ class AccessControlDevice extends Model
                 self::PROVIDER_ZKTECO_AGENT,
                 self::PROVIDER_ZKTECO_ZKBIO,
                 self::PROVIDER_ZKBIO_PLATFORM,
+                self::PROVIDER_ZKBIO_API,
             ];
         }
 
         return [$normalized];
+    }
+
+    public static function canonicalProviderKey(?string $provider, ?string $integration_type = null): string
+    {
+        if ($provider === null || trim($provider) === '') {
+            if ($integration_type === self::INTEGRATION_ZKTECO) {
+                return 'zkteco';
+            }
+
+            return 'hikvision';
+        }
+
+        return match (self::normalizeProvider($provider)) {
+            self::PROVIDER_ZKTECO_ZKBIO, self::PROVIDER_ZKTECO_AGENT => 'zkteco',
+            default => 'hikvision',
+        };
     }
 
     public static function driverForProvider(?string $provider): string
