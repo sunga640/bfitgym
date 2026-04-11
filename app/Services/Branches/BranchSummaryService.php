@@ -61,6 +61,7 @@ class BranchSummaryService
         $membership_revenue = PaymentTransaction::query()
             ->whereIn('branch_id', $branch_ids)
             ->where('status', 'paid')
+            ->excludeDeletedMembershipSubscriptions()
             ->where('revenue_type', 'membership')
             ->whereBetween('paid_at', [$month_start, $month_end])
             ->groupBy('branch_id')
@@ -118,6 +119,7 @@ class BranchSummaryService
         $membership_revenue_this_month = PaymentTransaction::query()
             ->where('branch_id', $branch_id)
             ->where('status', 'paid')
+            ->excludeDeletedMembershipSubscriptions()
             ->where('revenue_type', 'membership')
             ->whereBetween('paid_at', [$month_start, $month_end])
             ->sum('amount');
@@ -258,6 +260,7 @@ class BranchSummaryService
         $membership_revenue = PaymentTransaction::query()
             ->where('branch_id', $branch_id)
             ->where('status', 'paid')
+            ->excludeDeletedMembershipSubscriptions()
             ->where('revenue_type', 'membership')
             ->whereBetween('paid_at', [$from, $to])
             ->sum('amount');
@@ -329,4 +332,3 @@ class BranchSummaryService
         ];
     }
 }
-

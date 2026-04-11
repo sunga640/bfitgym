@@ -5,6 +5,9 @@ namespace App\Livewire\Subscriptions;
 use App\Models\MemberSubscription;
 use App\Models\MembershipPackage;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -24,6 +27,11 @@ class Index extends Component
 
     #[Url]
     public string $auto_renew_filter = '';
+
+    public function mount(): void
+    {
+        $this->authorize('viewAny', MemberSubscription::class);
+    }
 
     public function updatingSearch(): void
     {
@@ -49,6 +57,35 @@ class Index extends Component
     {
         $this->reset(['search', 'status_filter', 'package_filter', 'auto_renew_filter']);
         $this->resetPage();
+    }
+
+    public function deleteSubscription(int $subscription_id): void
+    {
+        try {
+            $subscription = MemberSubscription::query()->findOrFail($subscription_id);
+
+            $this->authorize('delete', $subscription);
+
+            DB::beginTransaction();
+            $subscription->delete();
+            DB::commit();
+
+            session()->flash('success', __('Subscription deleted successfully.'));
+        } catch (\Illuminate\Auth\Access\AuthorizationException) {
+            session()->flash('error', __('You do not have permission to delete this subscription.'));
+        } catch (ModelNotFoundException) {
+            session()->flash('error', __('Subscription not found.'));
+        } catch (\Throwable $throwable) {
+            DB::rollBack();
+
+            Log::error('Failed to delete subscription', [
+                'subscription_id' => $subscription_id,
+                'user_id' => auth()->id(),
+                'error' => $throwable->getMessage(),
+            ]);
+
+            session()->flash('error', __('Failed to delete subscription. Please try again.'));
+        }
     }
 
     public function render(): View
@@ -82,5 +119,4 @@ class Index extends Component
         ]);
     }
 }
-
 

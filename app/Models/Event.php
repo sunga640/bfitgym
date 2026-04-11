@@ -20,6 +20,7 @@ class Event extends Model
         'location',
         'start_datetime',
         'end_datetime',
+        'payment_required',
         'price',
         'capacity',
         'allow_non_members',
@@ -31,6 +32,7 @@ class Event extends Model
         return [
             'start_datetime' => 'datetime',
             'end_datetime' => 'datetime',
+            'payment_required' => 'boolean',
             'price' => 'decimal:2',
             'capacity' => 'integer',
             'allow_non_members' => 'boolean',
@@ -43,7 +45,7 @@ class Event extends Model
 
     public function getIsPaidAttribute(): bool
     {
-        return $this->type === 'paid' && $this->price > 0;
+        return $this->payment_required && (float) $this->price > 0;
     }
 
     public function getRemainingCapacityAttribute(): ?int
@@ -52,7 +54,10 @@ class Event extends Model
             return null;
         }
 
-        return max(0, $this->capacity - $this->registrations()->whereIn('status', ['confirmed', 'attended'])->count());
+        return max(0, $this->capacity - $this->registrations()
+            ->where('will_attend', true)
+            ->whereIn('status', ['confirmed', 'attended'])
+            ->count());
     }
 
     // -------------------------------------------------------------------------
@@ -88,4 +93,3 @@ class Event extends Model
         return $this->hasMany(EventRegistration::class);
     }
 }
-

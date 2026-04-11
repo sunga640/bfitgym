@@ -473,9 +473,9 @@
             </details>
         @endcan
 
-        @canany(['view payments', 'view expenses'])
-            <details class="side-group" @if(request()->routeIs('payments.*', 'expenses.*', 'expense-categories.*')) open @endif>
-                <summary class="side-parent {{ request()->routeIs('payments.*', 'expenses.*', 'expense-categories.*') ? 'side-parent-active' : '' }}">
+        @can('view payments')
+            <details class="side-group" @if(request()->routeIs('payments.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('payments.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
                         <i class="fa-sharp-duotone fa-solid fa-wallet side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Finances') }}</span>
@@ -483,18 +483,28 @@
                     <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
-                    @can('view payments')
-                        <a href="{{ route('payments.index') }}" class="side-child {{ request()->routeIs('payments.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Payments') }}</a>
-                    @endcan
-                    @can('view expenses')
-                        <a href="{{ route('expenses.index') }}" class="side-child {{ request()->routeIs('expenses.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Expenses') }}</a>
-                        <a href="{{ route('expense-categories.index') }}" class="side-child {{ request()->routeIs('expense-categories.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Expense Categories') }}</a>
-                    @endcan
+                    <a href="{{ route('payments.index') }}" class="side-child {{ request()->routeIs('payments.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Payments') }}</a>
                 </div>
             </details>
-        @endcanany
+        @endcan
 
-        @canany(['view reports', 'view financial reports', 'view attendance reports', 'view membership reports', 'view insurance reports', 'view pos reports'])
+        @can('view expenses')
+            <details class="side-group" @if(request()->routeIs('expenses.*', 'expense-categories.*')) open @endif>
+                <summary class="side-parent {{ request()->routeIs('expenses.*', 'expense-categories.*') ? 'side-parent-active' : '' }}">
+                    <span class="side-parent-left">
+                        <i class="fa-sharp-duotone fa-solid fa-receipt side-icon" aria-hidden="true"></i>
+                        <span class="side-parent-label">{{ __('Expenses') }}</span>
+                    </span>
+                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="side-children">
+                    <a href="{{ route('expenses.index') }}" class="side-child {{ request()->routeIs('expenses.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Expenses') }}</a>
+                    <a href="{{ route('expense-categories.index') }}" class="side-child {{ request()->routeIs('expense-categories.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Expense Categories') }}</a>
+                </div>
+            </details>
+        @endcan
+
+        @canany(['view reports', 'view financial reports', 'view attendance reports', 'view membership reports', 'view insurance reports', 'view pos reports', 'view expense reports'])
             <details class="side-group" @if(request()->routeIs('reports.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('reports.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
@@ -506,6 +516,9 @@
                 <div class="side-children">
                     @can('view financial reports')
                         <a href="{{ route('reports.revenue') }}" class="side-child {{ request()->routeIs('reports.revenue') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Revenue') }}</a>
+                    @endcan
+                    @can('view expense reports')
+                        <a href="{{ route('reports.expenses') }}" class="side-child {{ request()->routeIs('reports.expenses') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Expenses') }}</a>
                     @endcan
                     @can('view membership reports')
                         <a href="{{ route('reports.memberships') }}" class="side-child {{ request()->routeIs('reports.memberships') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Memberships') }}</a>

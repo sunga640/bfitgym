@@ -212,6 +212,17 @@
                         {{ __('Renew subscription') }}
                     </flux:button>
                 @endif
+                @if($this->canDelete)
+                    <flux:button
+                        variant="ghost"
+                        wire:click="deleteSubscription"
+                        wire:confirm="{{ __('Are you sure you want to delete this subscription? This will remove its membership revenue from reports.') }}"
+                        icon="trash"
+                        class="w-full justify-center text-red-600 hover:text-red-700 dark:text-red-400"
+                    >
+                        {{ __('Delete subscription') }}
+                    </flux:button>
+                @endif
                 <flux:button
                     variant="ghost"
                     href="{{ route('subscriptions.index') }}"

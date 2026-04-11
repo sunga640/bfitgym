@@ -50,6 +50,8 @@ class Index extends Component
 
     public function mount(): void
     {
+        $this->authorize('viewAny', Event::class);
+
         if (empty($this->current_date)) {
             $this->current_date = now()->format('Y-m-d');
         }
@@ -94,7 +96,9 @@ class Index extends Component
 
     public function showEventQuickView(int $event_id): void
     {
-        $event = Event::withCount(['registrations' => fn($q) => $q->whereIn('status', ['pending', 'confirmed', 'attended'])])
+        $event = Event::withCount(['registrations' => fn($q) => $q
+            ->where('will_attend', true)
+            ->whereIn('status', ['pending', 'confirmed', 'attended'])])
             ->find($event_id);
 
         if (!$event) {
@@ -113,6 +117,7 @@ class Index extends Component
             'capacity' => $event->capacity,
             'registered' => $event->registrations_count,
             'is_paid' => $event->is_paid,
+            'payment_required' => (bool) $event->payment_required,
             'price' => $event->price,
             'allow_non_members' => $event->allow_non_members,
             'status' => $event->status,
@@ -211,30 +216,50 @@ class Index extends Component
     protected function getCalendarEvents(string $start_date, string $end_date): array
     {
         $events = Event::query()
-            ->where('start_datetime', '>=', $start_date . ' 00:00:00')
-            ->where('start_datetime', '<=', $end_date . ' 23:59:59')
+            ->where(function ($query) use ($start_date, $end_date) {
+                $query
+                    ->whereBetween('start_datetime', [$start_date . ' 00:00:00', $end_date . ' 23:59:59'])
+                    ->orWhereBetween('end_datetime', [$start_date . ' 00:00:00', $end_date . ' 23:59:59'])
+                    ->orWhere(function ($nested_query) use ($start_date, $end_date) {
+                        $nested_query
+                            ->where('start_datetime', '<=', $start_date . ' 00:00:00')
+                            ->where('end_datetime', '>=', $end_date . ' 23:59:59');
+                    });
+            })
             ->when($this->type_filter, fn($query) => $query->where('type', $this->type_filter))
             ->when($this->status_filter, fn($query) => $query->where('status', $this->status_filter))
-            ->withCount(['registrations' => fn($q) => $q->whereIn('status', ['pending', 'confirmed', 'attended'])])
+            ->withCount(['registrations' => fn($q) => $q
+                ->where('will_attend', true)
+                ->whereIn('status', ['pending', 'confirmed', 'attended'])])
             ->get();
 
         $calendar_events = [];
 
         foreach ($events as $event) {
-            $date_str = $event->start_datetime->format('Y-m-d');
-            $calendar_events[$date_str][] = [
-                'id' => $event->id,
-                'title' => $event->title,
-                'start_time' => $event->start_datetime->format('H:i'),
-                'end_time' => $event->end_datetime?->format('H:i'),
-                'location' => $event->location,
-                'type' => $event->type,
-                'status' => $event->status,
-                'registrations_count' => $event->registrations_count,
-                'capacity' => $event->capacity,
-                'is_paid' => $event->is_paid,
-                'price' => $event->price,
-            ];
+            $event_start = $event->start_datetime->copy()->startOfDay();
+            $event_end = $event->end_datetime?->copy()->endOfDay() ?? $event_start->copy();
+            $display_date = $event_start->copy();
+
+            while ($display_date->lte($event_end)) {
+                if ($display_date->toDateString() >= $start_date && $display_date->toDateString() <= $end_date) {
+                    $date_str = $display_date->format('Y-m-d');
+                    $calendar_events[$date_str][] = [
+                        'id' => $event->id,
+                        'title' => $event->title,
+                        'start_time' => $event->start_datetime->format('H:i'),
+                        'end_time' => $event->end_datetime?->format('H:i'),
+                        'location' => $event->location,
+                        'type' => $event->type,
+                        'status' => $event->status,
+                        'registrations_count' => $event->registrations_count,
+                        'capacity' => $event->capacity,
+                        'is_paid' => $event->is_paid,
+                        'price' => $event->price,
+                    ];
+                }
+
+                $display_date->addDay();
+            }
         }
 
         // Sort events by start time within each day
@@ -262,7 +287,9 @@ class Index extends Component
 
         // List view
         $events = Event::query()
-            ->withCount(['registrations' => fn($q) => $q->whereIn('status', ['pending', 'confirmed', 'attended'])])
+            ->withCount(['registrations' => fn($q) => $q
+                ->where('will_attend', true)
+                ->whereIn('status', ['pending', 'confirmed', 'attended'])])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('title', 'like', "%{$this->search}%")
@@ -282,4 +309,3 @@ class Index extends Component
         ]);
     }
 }
-

@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'secret' => env('PAYPAL_SECRET'),
+        'base_url' => env('PAYPAL_BASE_URL', 'https://api-m.sandbox.paypal.com'),
+        'currency' => env('PAYPAL_CURRENCY', env('APP_CURRENCY', 'TZS')),
+        'timeout' => env('PAYPAL_TIMEOUT', 20),
+    ],
+
 ];

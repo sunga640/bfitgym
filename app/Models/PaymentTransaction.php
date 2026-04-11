@@ -69,6 +69,27 @@ class PaymentTransaction extends Model
         return $query->whereBetween('paid_at', [$from, $to]);
     }
 
+    /**
+     * Exclude membership payments whose linked subscription has been soft-deleted.
+     */
+    public function scopeExcludeDeletedMembershipSubscriptions($query)
+    {
+        return $query->where(function ($base_query) {
+            $base_query
+                ->where('revenue_type', '!=', self::REVENUE_TYPE_MEMBERSHIP)
+                ->orWhere(function ($membership_query) {
+                    $membership_query
+                        ->where('revenue_type', self::REVENUE_TYPE_MEMBERSHIP)
+                        ->where(function ($payable_query) {
+                            $payable_query
+                                ->whereNull('payable_type')
+                                ->orWhere('payable_type', '!=', MemberSubscription::class)
+                                ->orWhereHasMorph('payable', [MemberSubscription::class]);
+                        });
+                });
+        });
+    }
+
     // -------------------------------------------------------------------------
     // Relationships
     // -------------------------------------------------------------------------
@@ -88,4 +109,3 @@ class PaymentTransaction extends Model
         return $this->morphTo();
     }
 }
-

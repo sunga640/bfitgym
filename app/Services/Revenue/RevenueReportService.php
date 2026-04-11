@@ -15,6 +15,7 @@ class RevenueReportService
     public function getRevenueBySource(?int $branch_id, Carbon $from, Carbon $to): array
     {
         $query = PaymentTransaction::paid()
+            ->excludeDeletedMembershipSubscriptions()
             ->betweenDates($from, $to);
 
         if ($branch_id) {
@@ -41,6 +42,7 @@ class RevenueReportService
     public function getDailyRevenue(?int $branch_id, Carbon $from, Carbon $to): Collection
     {
         $query = PaymentTransaction::paid()
+            ->excludeDeletedMembershipSubscriptions()
             ->betweenDates($from, $to);
 
         if ($branch_id) {
@@ -63,6 +65,7 @@ class RevenueReportService
     public function getMonthlyRevenue(?int $branch_id, int $year): Collection
     {
         $query = PaymentTransaction::paid()
+            ->excludeDeletedMembershipSubscriptions()
             ->whereYear('paid_at', $year);
 
         if ($branch_id) {
@@ -121,6 +124,7 @@ class RevenueReportService
     public function getRevenueForPeriod(?int $branch_id, Carbon $from, Carbon $to): float
     {
         $query = PaymentTransaction::paid()
+            ->excludeDeletedMembershipSubscriptions()
             ->betweenDates($from, $to);
 
         if ($branch_id) {
@@ -135,7 +139,8 @@ class RevenueReportService
      */
     public function getTransactions(?int $branch_id, array $filters = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
-        $query = PaymentTransaction::with(['payerMember', 'payerInsurer', 'payable']);
+        $query = PaymentTransaction::with(['payerMember', 'payerInsurer', 'payable'])
+            ->excludeDeletedMembershipSubscriptions();
 
         if ($branch_id) {
             $query->where('branch_id', $branch_id);
@@ -267,4 +272,3 @@ class RevenueReportService
         return $sources;
     }
 }
-

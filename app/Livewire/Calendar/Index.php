@@ -110,7 +110,9 @@ class Index extends Component
 
     public function showEventDetail(int $event_id): void
     {
-        $event = Event::withCount(['registrations' => fn($q) => $q->whereIn('status', ['pending', 'confirmed', 'attended'])])
+        $event = Event::withCount(['registrations' => fn($q) => $q
+            ->where('will_attend', true)
+            ->whereIn('status', ['pending', 'confirmed', 'attended'])])
             ->find($event_id);
 
         if (!$event) {
@@ -130,6 +132,7 @@ class Index extends Component
             'capacity' => $event->capacity,
             'registered' => $event->registrations_count,
             'is_paid' => $event->is_paid,
+            'payment_required' => (bool) $event->payment_required,
             'price' => $event->price,
             'allow_non_members' => $event->allow_non_members,
             'status' => $event->status,
@@ -245,24 +248,49 @@ class Index extends Component
 
         $events = Event::query()
             ->scheduled()
-            ->where('start_datetime', '>=', $start_date . ' 00:00:00')
-            ->where('start_datetime', '<=', $end_date . ' 23:59:59')
+            ->where(function ($query) use ($start_date, $end_date) {
+                $query
+                    ->whereBetween('start_datetime', [$start_date . ' 00:00:00', $end_date . ' 23:59:59'])
+                    ->orWhereBetween('end_datetime', [$start_date . ' 00:00:00', $end_date . ' 23:59:59'])
+                    ->orWhere(function ($nested_query) use ($start_date, $end_date) {
+                        $nested_query
+                            ->where('start_datetime', '<=', $start_date . ' 00:00:00')
+                            ->where('end_datetime', '>=', $end_date . ' 23:59:59');
+                    });
+            })
             ->get();
 
         $calendar_items = [];
 
         foreach ($events as $event) {
-            $date_str = $event->start_datetime->format('Y-m-d');
-            $calendar_items[$date_str][] = [
-                'id' => $event->id,
-                'type' => 'event',
-                'name' => $event->title,
-                'start_time' => $event->start_datetime->format('H:i'),
-                'end_time' => $event->end_datetime?->format('H:i'),
-                'location' => $event->location,
-                'event_type' => $event->type,
-                'color' => $this->getEventColor($event->type),
-            ];
+            $event_start = $event->start_datetime->copy()->startOfDay();
+            $event_end = $event->end_datetime?->copy()->endOfDay() ?? $event_start->copy();
+            $display_date = $event_start->copy();
+
+            while ($display_date->lte($event_end)) {
+                $date_str = $display_date->format('Y-m-d');
+                if ($date_str >= $start_date && $date_str <= $end_date) {
+                    $visual_type = $event->payment_required ? 'paid' : $event->type;
+
+                    $calendar_items[$date_str][] = [
+                        'id' => $event->id,
+                        'type' => 'event',
+                        'name' => $event->title,
+                        'start_time' => $event->start_datetime->format('H:i'),
+                        'end_time' => $event->end_datetime?->format('H:i'),
+                        'location' => $event->location,
+                        'event_type' => $visual_type,
+                        'color' => $this->getEventColor($visual_type),
+                    ];
+                }
+
+                $display_date->addDay();
+            }
+        }
+
+        // Keep each date bucket ordered by start time.
+        foreach ($calendar_items as $date => &$items) {
+            usort($items, fn($a, $b) => strcmp($a['start_time'], $b['start_time']));
         }
 
         return $calendar_items;
@@ -325,4 +353,3 @@ class Index extends Component
         ]);
     }
 }
-

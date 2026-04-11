@@ -18,7 +18,24 @@ use Illuminate\Support\Carbon;
 | Public Routes
 |--------------------------------------------------------------------------
 */
+Route::prefix('events/public')->name('public.events.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\PublicEventRegistrationController::class, 'index'])->name('index');
 
+    Route::prefix('registrations/{registration}')
+        ->whereNumber('registration')
+        ->group(function () {
+            Route::get('/success', [\App\Http\Controllers\PublicEventRegistrationController::class, 'success'])->name('success');
+            Route::get('/payment/approved', [\App\Http\Controllers\PublicEventRegistrationController::class, 'paymentApproved'])->name('payment.approved');
+            Route::get('/payment/cancelled', [\App\Http\Controllers\PublicEventRegistrationController::class, 'paymentCancelled'])->name('payment.cancelled');
+        });
+
+    Route::get('/{event}', [\App\Http\Controllers\PublicEventRegistrationController::class, 'show'])
+        ->whereNumber('event')
+        ->name('show');
+    Route::post('/{event}/register', [\App\Http\Controllers\PublicEventRegistrationController::class, 'register'])
+        ->whereNumber('event')
+        ->name('register');
+});
 
 
 /*
@@ -193,8 +210,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('events')->name('events.')->group(function () {
         Route::view('/', 'events.index')->name('index');
         Route::view('/create', 'events.create')->name('create');
-        Route::view('/{event}', 'events.show')->name('show');
-        Route::view('/{event}/edit', 'events.edit')->name('edit');
+        Route::get('/{event}', fn(\App\Models\Event $event) => view('events.show', compact('event')))->name('show');
+        Route::get('/{event}/edit', fn(\App\Models\Event $event) => view('events.edit', compact('event')))->name('edit');
     });
 
     Route::prefix('event-registrations')->name('event-registrations.')->group(function () {
@@ -372,13 +389,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('expenses')->name('expenses.')->group(function () {
         Route::view('/', 'expenses.index')->name('index');
         Route::view('/create', 'expenses.create')->name('create');
-        Route::view('/{expense}/edit', 'expenses.edit')->name('edit');
+        Route::get('/{expense}/edit', fn(\App\Models\Expense $expense) => view('expenses.edit', compact('expense')))->name('edit');
     });
 
     Route::prefix('expense-categories')->name('expense-categories.')->group(function () {
         Route::view('/', 'expense-categories.index')->name('index');
         Route::view('/create', 'expense-categories.create')->name('create');
-        Route::view('/{expenseCategory}/edit', 'expense-categories.edit')->name('edit');
+        Route::get('/{expenseCategory}/edit', fn(\App\Models\ExpenseCategory $expenseCategory) => view('expense-categories.edit', compact('expenseCategory')))->name('edit');
     });
 
     /*
@@ -392,6 +409,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::view('/memberships', 'reports.memberships')->name('memberships');
         Route::view('/attendance', 'reports.attendance')->name('attendance');
         Route::view('/insurance', 'reports.insurance')->name('insurance');
+        Route::view('/expenses', 'reports.expenses')->name('expenses');
         Route::view('/pos', 'reports.pos')->name('pos');
         Route::view('/inventory', 'reports.inventory')->name('inventory');
     });

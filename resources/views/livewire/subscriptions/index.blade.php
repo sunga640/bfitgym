@@ -175,6 +175,18 @@
                                         {{ __('Renew') }}
                                     </flux:button>
                                 @endif
+                                @can('delete', $subscription)
+                                    <flux:button
+                                        variant="ghost"
+                                        size="sm"
+                                        wire:click="deleteSubscription({{ $subscription->id }})"
+                                        wire:confirm="{{ __('Are you sure you want to delete this subscription? This will remove it from reports.') }}"
+                                        icon="trash"
+                                        class="text-red-600 hover:text-red-700 dark:text-red-400"
+                                    >
+                                        {{ __('Delete') }}
+                                    </flux:button>
+                                @endcan
                             </div>
                         </td>
                     </tr>

@@ -5,6 +5,7 @@ namespace App\Livewire\Subscriptions;
 use App\Models\MemberSubscription;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 
@@ -82,6 +83,37 @@ class Show extends Component
     public function getCanUpdateStatusProperty(): bool
     {
         return auth()->user()?->can('update', $this->subscription) ?? false;
+    }
+
+    public function getCanDeleteProperty(): bool
+    {
+        return auth()->user()?->can('delete', $this->subscription) ?? false;
+    }
+
+    public function deleteSubscription(): void
+    {
+        try {
+            $this->authorize('delete', $this->subscription);
+
+            DB::beginTransaction();
+            $this->subscription->delete();
+            DB::commit();
+
+            session()->flash('success', __('Subscription deleted successfully.'));
+            $this->redirect(route('subscriptions.index'), navigate: true);
+        } catch (\Illuminate\Auth\Access\AuthorizationException) {
+            session()->flash('error', __('You do not have permission to delete this subscription.'));
+        } catch (\Throwable $throwable) {
+            DB::rollBack();
+
+            Log::error('Failed to delete subscription from show page', [
+                'subscription_id' => $this->subscription->id,
+                'user_id' => auth()->id(),
+                'error' => $throwable->getMessage(),
+            ]);
+
+            session()->flash('error', __('Failed to delete subscription. Please try again.'));
+        }
     }
 
     public function render(): View

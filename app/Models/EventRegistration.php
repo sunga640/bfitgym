@@ -21,6 +21,7 @@ class EventRegistration extends Model
         'full_name',
         'phone',
         'email',
+        'will_attend',
         'status',
         'registration_datetime',
     ];
@@ -29,6 +30,7 @@ class EventRegistration extends Model
     {
         return [
             'registration_datetime' => 'datetime',
+            'will_attend' => 'boolean',
         ];
     }
 
@@ -88,4 +90,3 @@ class EventRegistration extends Model
         return $this->morphMany(PaymentTransaction::class, 'payable');
     }
 }
-
