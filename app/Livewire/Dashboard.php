@@ -85,6 +85,7 @@ class Dashboard extends Component
     public function monthlyRevenue(): float
     {
         return PaymentTransaction::paid()
+            ->excludeDeletedMembershipSubscriptions()
             ->whereYear('paid_at', now()->year)
             ->whereMonth('paid_at', now()->month)
             ->sum('amount');
@@ -147,6 +148,7 @@ class Dashboard extends Component
         // Get recent payments
         $payments = PaymentTransaction::with(['payerMember'])
             ->paid()
+            ->excludeDeletedMembershipSubscriptions()
             ->latest('paid_at')
             ->limit(5)
             ->get()
@@ -230,6 +232,7 @@ class Dashboard extends Component
 
         // Get daily revenue
         $revenue = PaymentTransaction::paid()
+            ->excludeDeletedMembershipSubscriptions()
             ->whereBetween('paid_at', [$start_of_month, $end_of_month])
             ->select(
                 DB::raw('DATE(paid_at) as date'),
@@ -241,6 +244,7 @@ class Dashboard extends Component
 
         // Get revenue by type for this month
         $revenue_by_type = PaymentTransaction::paid()
+            ->excludeDeletedMembershipSubscriptions()
             ->whereBetween('paid_at', [$start_of_month, $end_of_month])
             ->select('revenue_type', DB::raw('SUM(amount) as total'))
             ->groupBy('revenue_type')
