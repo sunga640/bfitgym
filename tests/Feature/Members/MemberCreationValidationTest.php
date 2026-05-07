@@ -4,8 +4,10 @@ use App\Livewire\Members\Form as MemberForm;
 use App\Models\Branch;
 use App\Models\Member;
 use App\Models\User;
+use Illuminate\Support\Facades\Session;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
     foreach (['create members', 'view members', 'switch branches'] as $permission_name) {
@@ -87,4 +89,21 @@ it('requires gender when creating a member', function () {
         ->set('gender', '')
         ->call('save')
         ->assertHasErrors(['gender' => 'required']);
+});
+
+it('switches to the created member branch so the redirected list shows it', function () {
+    $target_branch = Branch::factory()->create();
+    Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+    $this->user->assignRole('super-admin');
+
+    Livewire::test(MemberForm::class)
+        ->set('branch_id', $target_branch->id)
+        ->set('first_name', 'Visible')
+        ->set('last_name', 'Member')
+        ->set('gender', 'female')
+        ->set('phone', '0755000011')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Session::get('current_branch_id'))->toBe($target_branch->id);
 });

@@ -1,7 +1,7 @@
 @props(['title' => null, 'description' => null])
 
 <x-layouts.app.sidebar :title="$title">
-    <flux:main class="relative min-h-screen p-4 pt-0 lg:p-6 lg:pt-0 lg:pl-2">
+    <flux:main class="app-content relative h-[calc(100dvh-4rem)] min-h-0 overflow-y-auto overscroll-contain p-4 pt-0 pb-8 lg:h-[calc(100dvh-4.5rem)] lg:p-6 lg:pt-0 lg:pb-8 lg:pl-2">
         {{-- Page Header --}}
         <div class="mb-6">
             {{-- Breadcrumbs (optional) --}}

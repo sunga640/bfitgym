@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Insurer;
 use App\Models\Member;
 use App\Models\MemberInsurance;
+use App\Services\BranchContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
@@ -41,20 +42,18 @@ class Form extends Component
         $this->isEditing = $member && $member->exists;
 
         if ($this->isEditing) {
-            $this->fill(Arr::only($member->toArray(), [
-                'branch_id',
-                'member_no',
-                'first_name',
-                'last_name',
-                'phone',
-                'email',
-                'gender',
-                'dob',
-                'address',
-                'status',
-                'has_insurance',
-                'notes',
-            ]));
+            $this->branch_id = $member->branch_id;
+            $this->member_no = (string) ($member->member_no ?? '');
+            $this->first_name = (string) ($member->first_name ?? '');
+            $this->last_name = (string) ($member->last_name ?? '');
+            $this->phone = (string) ($member->phone ?? '');
+            $this->email = (string) ($member->email ?? '');
+            $this->gender = (string) ($member->gender ?? '');
+            $this->dob = $member->dob?->format('Y-m-d');
+            $this->address = (string) ($member->address ?? '');
+            $this->status = (string) ($member->status ?? 'active');
+            $this->has_insurance = (bool) $member->has_insurance;
+            $this->notes = (string) ($member->notes ?? '');
 
             // Load existing active insurance if present
             $active_insurance = $member->insurances()->active()->latest()->first();
@@ -200,6 +199,9 @@ class Form extends Component
                 }
 
                 DB::commit();
+
+                $this->showCreatedMemberBranch($member);
+
                 session()->flash('success', __('Member created successfully.'));
                 $this->redirect(route('members.index'), navigate: true);
             } else {
@@ -303,5 +305,16 @@ class Form extends Component
         $nextNumber = $highestNumber + 1;
 
         return $prefix . '-' . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function showCreatedMemberBranch(Member $member): void
+    {
+        $branch_id = $member->branch_id;
+
+        if (! $branch_id) {
+            return;
+        }
+
+        app(BranchContext::class)->setCurrentBranch((int) $branch_id);
     }
 }

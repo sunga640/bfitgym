@@ -24,7 +24,7 @@
                     <div class="sm:col-span-2">
                         <flux:field>
                             <flux:label>{{ __('Branch') }}</flux:label>
-                            <flux:select wire:model.live="branch_id">
+                            <flux:select wire:model="branch_id">
                                 <option value="">{{ __('Select branch') }}</option>
                                 @foreach($branches as $branch)
                                     <option value="{{ $branch->id }}">{{ $branch->name }}</option>
@@ -40,7 +40,7 @@
                 <div>
                     <flux:field>
                         <flux:label>{{ __('First Name') }}</flux:label>
-                        <flux:input type="text" wire:model.live="first_name" required />
+                        <flux:input type="text" wire:model.blur="first_name" required />
                         @error('first_name')
                             <div class="mt-1 text-xs text-red-500">{{ $message }}</div>
                         @enderror
@@ -50,7 +50,7 @@
                 <div>
                     <flux:field>
                         <flux:label>{{ __('Last Name') }}</flux:label>
-                        <flux:input type="text" wire:model.live="last_name" required />
+                        <flux:input type="text" wire:model.blur="last_name" required />
                         @error('last_name')
                             <div class="mt-1 text-xs text-red-500">{{ $message }}</div>
                         @enderror
@@ -60,7 +60,7 @@
                 <div>
                     <flux:field>
                         <flux:label>{{ __('Phone') }}</flux:label>
-                        <flux:input type="tel" wire:model.live="phone" required placeholder="+255" />
+                        <flux:input type="tel" wire:model.blur="phone" required placeholder="+255" />
                         @error('phone')
                             <div class="mt-1 text-xs text-red-500">{{ $message }}</div>
                         @enderror
@@ -70,7 +70,7 @@
                 <div>
                     <flux:field>
                         <flux:label>{{ __('Email') }}</flux:label>
-                        <flux:input type="email" wire:model.live="email" />
+                        <flux:input type="email" wire:model.blur="email" />
                         @error('email')
                             <div class="mt-1 text-xs text-red-500">{{ $message }}</div>
                         @enderror
@@ -80,7 +80,7 @@
                 <div>
                     <flux:field>
                         <flux:label>{{ __('Gender') }} <span class="text-red-500">*</span></flux:label>
-                        <flux:select wire:model.live="gender" required>
+                        <flux:select wire:model="gender" required>
                             <option value="">{{ __('Select gender') }}</option>
                             <option value="male">{{ __('Male') }}</option>
                             <option value="female">{{ __('Female') }}</option>
@@ -95,7 +95,7 @@
                 <div>
                     <flux:field>
                         <flux:label>{{ __('Date of Birth') }}</flux:label>
-                        <flux:input type="date" wire:model.live="dob" />
+                        <flux:input type="date" wire:model.blur="dob" />
                         @error('dob')
                             <div class="mt-1 text-xs text-red-500">{{ $message }}</div>
                         @enderror
@@ -105,7 +105,7 @@
                 <div class="sm:col-span-2">
                     <flux:field>
                         <flux:label>{{ __('Address') }}</flux:label>
-                        <flux:textarea wire:model.live="address" rows="2" />
+                        <flux:textarea wire:model.blur="address" rows="2" />
                         @error('address')
                             <div class="mt-1 text-xs text-red-500">{{ $message }}</div>
                         @enderror
@@ -115,7 +115,7 @@
                 <div>
                     <flux:field>
                         <flux:label>{{ __('Status') }}</flux:label>
-                        <flux:select wire:model.live="status">
+                        <flux:select wire:model="status">
                             <option value="active">{{ __('Active') }}</option>
                             <option value="inactive">{{ __('Inactive') }}</option>
                             <option value="suspended">{{ __('Suspended') }}</option>
@@ -129,7 +129,7 @@
                 <div class="sm:col-span-2">
                     <flux:field>
                         <flux:label>{{ __('Notes') }}</flux:label>
-                        <flux:textarea wire:model.live="notes" rows="3" placeholder="{{ __('Health conditions, special requirements, etc.') }}" />
+                        <flux:textarea wire:model.blur="notes" rows="3" placeholder="{{ __('Health conditions, special requirements, etc.') }}" />
                         @error('notes')
                             <div class="mt-1 text-xs text-red-500">{{ $message }}</div>
                         @enderror
@@ -167,7 +167,7 @@
                         <div class="sm:col-span-2">
                             <flux:field>
                                 <flux:label>{{ __('Insurer') }} <span class="text-red-500">*</span></flux:label>
-                                <flux:select wire:model.live="insurer_id">
+                                <flux:select wire:model="insurer_id">
                                     <option value="">{{ __('Select insurer') }}</option>
                                     @foreach($insurers as $insurer)
                                         <option value="{{ $insurer->id }}">{{ $insurer->name }}</option>
@@ -182,7 +182,7 @@
                         <div>
                             <flux:field>
                                 <flux:label>{{ __('Start Date') }} <span class="text-red-500">*</span></flux:label>
-                                <flux:input type="date" wire:model.live="insurance_start_date" />
+                                <flux:input type="date" wire:model.blur="insurance_start_date" />
                                 @error('insurance_start_date')
                                     <div class="mt-1 text-xs text-red-500">{{ $message }}</div>
                                 @enderror
@@ -192,7 +192,7 @@
                         <div>
                             <flux:field>
                                 <flux:label>{{ __('End Date') }}</flux:label>
-                                <flux:input type="date" wire:model.live="insurance_end_date" />
+                                <flux:input type="date" wire:model.blur="insurance_end_date" />
                                 <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('Leave empty for indefinite coverage.') }}</p>
                                 @error('insurance_end_date')
                                     <div class="mt-1 text-xs text-red-500">{{ $message }}</div>

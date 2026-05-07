@@ -47,12 +47,68 @@
                     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
             }
 
+            @media (max-width: 767px) {
+                .glass-panel {
+                    backdrop-filter: none;
+                    -webkit-backdrop-filter: none;
+                }
+
+                .floating-sidebar {
+                    background: rgb(255 255 255) !important;
+                    padding: 0 !important;
+                    width: min(86vw, 22rem) !important;
+                    max-width: 22rem !important;
+                    box-shadow: 24px 0 48px rgba(0, 0, 0, 0.18) !important;
+                }
+
+                .dark .floating-sidebar {
+                    background: rgb(39 39 42) !important;
+                    box-shadow: 24px 0 48px rgba(0, 0, 0, 0.28) !important;
+                }
+
+                .floating-sidebar > .sidebar-inner {
+                    height: 100dvh !important;
+                    border-radius: 0 !important;
+                    border: 0 !important;
+                    background: rgb(255 255 255) !important;
+                    box-shadow: none !important;
+                }
+
+                .dark .floating-sidebar > .sidebar-inner {
+                    background: rgb(39 39 42) !important;
+                }
+
+                .floating-header > .glass-panel {
+                    background: rgb(255 255 255) !important;
+                    border-color: rgb(228 228 231) !important;
+                }
+
+                .dark .floating-header > .glass-panel {
+                    background: rgb(39 39 42) !important;
+                    border-color: rgb(82 82 91) !important;
+                }
+
+                .ambient-orb,
+                .ambient-noise {
+                    display: none;
+                }
+            }
+
             /* Override Flux sidebar defaults */
             .floating-sidebar {
                 background: transparent !important;
                 border: none !important;
                 padding: 1rem !important;
                 padding-right: 0.5rem !important;
+            }
+
+            @media (min-width: 1024px) {
+                .floating-sidebar {
+                    position: sticky !important;
+                    top: 0 !important;
+                    height: 100dvh !important;
+                    align-self: flex-start !important;
+                }
             }
             
             .floating-sidebar > .sidebar-inner {
@@ -200,20 +256,20 @@
             }
         </style>
     </head>
-    <body class="min-h-screen overflow-x-hidden">
+    <body class="app-shell h-dvh overflow-hidden">
         {{-- Full-page unified background --}}
         <div class="fixed inset-0 -z-10">
             {{-- Base gradient --}}
             <div class="absolute inset-0 bg-gradient-to-br from-amber-100 via-orange-50 to-rose-100 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950"></div>
             
             {{-- Decorative gradient orbs --}}
-            <div class="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-orange-300/40 blur-[100px] dark:bg-orange-500/20"></div>
-            <div class="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-rose-300/40 blur-[100px] dark:bg-rose-500/20"></div>
-            <div class="absolute left-1/3 top-1/2 h-[400px] w-[400px] -translate-y-1/2 rounded-full bg-amber-200/30 blur-[100px] dark:bg-amber-500/10"></div>
-            <div class="absolute bottom-1/4 right-1/3 h-[300px] w-[300px] rounded-full bg-pink-200/30 blur-[80px] dark:bg-pink-500/10"></div>
+            <div class="ambient-orb absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-orange-300/40 blur-[100px] dark:bg-orange-500/20"></div>
+            <div class="ambient-orb absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-rose-300/40 blur-[100px] dark:bg-rose-500/20"></div>
+            <div class="ambient-orb absolute left-1/3 top-1/2 h-[400px] w-[400px] -translate-y-1/2 rounded-full bg-amber-200/30 blur-[100px] dark:bg-amber-500/10"></div>
+            <div class="ambient-orb absolute bottom-1/4 right-1/3 h-[300px] w-[300px] rounded-full bg-pink-200/30 blur-[80px] dark:bg-pink-500/10"></div>
             
             {{-- Subtle noise texture overlay --}}
-            <div class="absolute inset-0 opacity-[0.02] dark:opacity-[0.04]" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E');"></div>
+            <div class="ambient-noise absolute inset-0 opacity-[0.02] dark:opacity-[0.04]" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E');"></div>
         </div>
 
         {{-- Floating Sidebar --}}
@@ -242,10 +298,10 @@
         <details class="side-group" @if(request()->routeIs('dashboard', 'calendar.*')) open @endif>
             <summary class="side-parent {{ request()->routeIs('dashboard', 'calendar.*') ? 'side-parent-active' : '' }}">
                 <span class="side-parent-left">
-                    <i class="fa-sharp-duotone fa-solid fa-gauge-high side-icon" aria-hidden="true"></i>
+                    <i class="fa-solid fa-gauge-high side-icon" aria-hidden="true"></i>
                     <span class="side-parent-label">{{ __('Overview') }}</span>
                 </span>
-                <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
             </summary>
             <div class="side-children">
                 <a href="{{ route('dashboard') }}" class="side-child {{ request()->routeIs('dashboard') ? 'side-child-active' : '' }}" wire:navigate>
@@ -261,10 +317,10 @@
             <details class="side-group" @if(request()->routeIs('branches.*', 'organization.branches.*', 'users.*', 'roles.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('branches.*', 'organization.branches.*', 'users.*', 'roles.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-buildings side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-buildings side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Organization') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     @can('view branches')
@@ -284,10 +340,10 @@
             <details class="side-group" @if(request()->routeIs('members.*', 'insurers.*', 'member-insurances.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('members.*', 'insurers.*', 'member-insurances.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-users side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-users side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Members') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     @can('view members')
@@ -305,10 +361,10 @@
             <details class="side-group" @if(request()->routeIs('membership-packages.*', 'subscriptions.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('membership-packages.*', 'subscriptions.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-id-card side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-id-card side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Memberships') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     @can('view membership-packages')
@@ -325,10 +381,10 @@
             <details class="side-group" @if(request()->routeIs('class-types.*', 'class-sessions.*', 'class-bookings.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('class-types.*', 'class-sessions.*', 'class-bookings.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-dumbbell side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-dumbbell side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Classes') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     @can('view classes')
@@ -346,10 +402,10 @@
             <details class="side-group" @if(request()->routeIs('exercises.*', 'workout-plans.*', 'member-workout-plans.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('exercises.*', 'workout-plans.*', 'member-workout-plans.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-fire side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-fire side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Training') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     <a href="{{ route('exercises.index') }}" class="side-child {{ request()->routeIs('exercises.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Exercises') }}</a>
@@ -365,10 +421,10 @@
             <details class="side-group" @if(request()->routeIs('events.*', 'event-registrations.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('events.*', 'event-registrations.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-calendar-check side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-calendar-check side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Events') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     <a href="{{ route('events.index') }}" class="side-child {{ request()->routeIs('events.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Events') }}</a>
@@ -383,10 +439,10 @@
             <details class="side-group" @if(request()->routeIs('pos.*', 'pos-sales.*', 'products.*', 'product-categories.*', 'branch-products.*', 'stock-adjustments.*', 'suppliers.*', 'purchase-orders.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('pos.*', 'pos-sales.*', 'products.*', 'product-categories.*', 'branch-products.*', 'stock-adjustments.*', 'suppliers.*', 'purchase-orders.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-cart-shopping side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-cart-shopping side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('POS & Inventory') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     @can('view pos')
@@ -415,10 +471,10 @@
             <details class="side-group" @if(request()->routeIs('hikvision.*', 'attendance.*', 'access-control.*', 'access-identities.*', 'access-devices.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('hikvision.*', 'attendance.*', 'access-control.*', 'access-identities.*', 'access-devices.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-fingerprint side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-fingerprint side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('HIKVision') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     @canany(['view hikvision', 'manage hikvision', 'view attendance', 'view access devices', 'manage access devices'])
@@ -439,10 +495,10 @@
             <details class="side-group" @if(request()->routeIs('zkteco.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('zkteco.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-microchip side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-microchip side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('ZKTeco') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     <a href="{{ route('zkteco.overview') }}" class="side-child {{ request()->routeIs('zkteco.connections.*', 'zkteco.overview') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Integrations') }}</a>
@@ -458,10 +514,10 @@
             <details class="side-group" @if(request()->routeIs('locations.*', 'equipment.*', 'equipment-allocations.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('locations.*', 'equipment.*', 'equipment-allocations.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-warehouse side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-warehouse side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Facilities') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     <a href="{{ route('locations.index') }}" class="side-child {{ request()->routeIs('locations.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Locations') }}</a>
@@ -477,10 +533,10 @@
             <details class="side-group" @if(request()->routeIs('payments.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('payments.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-wallet side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-wallet side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Finances') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     <a href="{{ route('payments.index') }}" class="side-child {{ request()->routeIs('payments.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Payments') }}</a>
@@ -492,10 +548,10 @@
             <details class="side-group" @if(request()->routeIs('expenses.*', 'expense-categories.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('expenses.*', 'expense-categories.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-receipt side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-receipt side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Expenses') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     <a href="{{ route('expenses.index') }}" class="side-child {{ request()->routeIs('expenses.*') ? 'side-child-active' : '' }}" wire:navigate>{{ __('Expenses') }}</a>
@@ -508,10 +564,10 @@
             <details class="side-group" @if(request()->routeIs('reports.*')) open @endif>
                 <summary class="side-parent {{ request()->routeIs('reports.*') ? 'side-parent-active' : '' }}">
                     <span class="side-parent-left">
-                        <i class="fa-sharp-duotone fa-solid fa-chart-line side-icon" aria-hidden="true"></i>
+                        <i class="fa-solid fa-chart-line side-icon" aria-hidden="true"></i>
                         <span class="side-parent-label">{{ __('Reports') }}</span>
                     </span>
-                    <i class="fa-sharp-duotone fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
+                    <i class="fa-solid fa-chevron-down side-chevron" aria-hidden="true"></i>
                 </summary>
                 <div class="side-children">
                     @can('view financial reports')
@@ -539,7 +595,7 @@
         @can('view settings')
             <a href="{{ route('settings.general') }}" class="side-parent {{ request()->routeIs('settings.*') ? 'side-parent-active' : '' }} mt-2" wire:navigate>
                 <span class="side-parent-left">
-                    <i class="fa-sharp-duotone fa-solid fa-gear side-icon" aria-hidden="true"></i>
+                    <i class="fa-solid fa-gear side-icon" aria-hidden="true"></i>
                     <span class="side-parent-label">{{ __('Settings') }}</span>
                 </span>
             </a>
@@ -551,7 +607,7 @@
 
         {{-- Floating Top Navigation Bar --}}
         <flux:header class="floating-header bg-transparent! border-none!" container>
-            <div class="glass-panel mr-4 mt-4 ml-1 flex flex-1 items-center px-4 py-2.5">
+            <div class="glass-panel mr-4 mt-2 ml-1 flex min-h-12 flex-1 items-center px-3 py-1.5">
                 {{-- Mobile Sidebar Toggle --}}
                 <flux:sidebar.toggle class="lg:hidden mr-2" icon="bars-2" inset="left" />
 
@@ -622,4 +678,5 @@
         @stack('scripts')
     </body>
 </html>
+
 
